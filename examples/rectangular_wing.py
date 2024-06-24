@@ -16,6 +16,7 @@ wing = Wing(n_panels=10)
 # airfoil data can be:
 # ['inviscid']
 # ['lei_airfoil_breukels', [tube_diameter, chamber_height]]
+# ['lei_airfoil_watchon', [ tube_diam, c_height, c_position, te_angle]]
 wing.add_section([0, -1, 0], [-1, -1, 0], "inviscid")
 wing.add_section([0, 1, 0], [-1, 1, 0], "inviscid")
 
