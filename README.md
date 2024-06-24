@@ -1,40 +1,31 @@
 # Description
-Generic Python template for AWE Group
+SurfplanAdapter, that calls VSM and runs aerodynamic analysis on kite designs.
 
 ## :gear: Installation
-
-### Dependencies
-
-- Sphinx Dependencies, see [requirements](requirements.txt)
 
 ### User Installation
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
 
 ```bash
-pip install .
+git clone https://github.com/jellepoland/SurfplanAdapter.git
+cd SurfplanAdapter/
+python -m venv venv
+source venv/bin/activate
+pip install -e .
 ```
 
-### Developer Installation
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+### Dependencies
 
-```bash
-pip install -e .[dev]
-```
+- Sphinx Dependencies, see [requirements](requirements.txt)
+
 
 ## :eyes: Usage
 
-```python
-import foobar
+Inside the examples folder, a script will be present to run the VSM code.
+There you can specify the necessary file names.
 
-# returns 'words'
-foobar.pluralize('word')
+The script will (a) process the files into the desired format and store this in processed_data and (b) read out these files and run the VSM to generate plots and values and store these in the results folder.
 
-# returns 'geese'
-foobar.pluralize('goose')
-
-# returns 'phenomenon'
-foobar.singularize('phenomena')
-```
 ## :wave: Contributing (optional)
 
 Pull requests are welcome. For major changes, please open an issue first
