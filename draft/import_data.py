@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Define the path to the file
-file_path = '/home/kitepower/Documents/SP_VSM/test_cases/default_kite/default_kite_3d.txt'
+file_path = 'enter_file_path'
 
 # loading file, this is used to read some info in the file useful for importing (such as number of rows in matrix)
 with open(file_path, 'r') as file:
