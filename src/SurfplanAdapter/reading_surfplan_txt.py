@@ -2,18 +2,18 @@ import numpy as np
 import os
 from reading_airfoil_dat_files import read_profile
 
-def read_from_txt(filename):
+def read_from_txt(filepath):
     """
     Read the main characteristics of kite ribs and LE (Leading Edge) tube sections from the .txt file from Surfplan.
 
     Parameters:
-    filename (str): The name of the file containing the 3D rib and LE tube data.
+    filepath (str): The name of the file containing the 3D rib and LE tube data.
 
     Returns:
     list of dict: A list of dictionaries, each containing the leading edge (LE) position, trailing edge (TE) position, 
                   and airfoil characteristics (tube diameter and camber height) for each rib.
     """
-    with open(filename, 'r') as file:
+    with open(filepath, 'r') as file:
         lines = file.readlines()
 
     ribs_data = []      # Output list to store the ribs' data
@@ -91,7 +91,7 @@ def read_from_txt(filename):
                 #print(i-k+1)
                 profile_name = f'prof_{i-k+1}.dat'
         # Extract the directory path
-        profile_directory_path = os.path.dirname(filename) + '/profiles/'   
+        profile_directory_path = os.path.dirname(filepath) + '/profiles/'   
         # Read camber height from .dat airfoil file
         camber_height = read_profile(profile_directory_path  + profile_name)["depth"]    
     
@@ -104,9 +104,9 @@ def read_from_txt(filename):
     return ribs_data
 
 # Example usage:
-filename = 'data/default_kite/default_kite_3d.txt'
-#filename = 'data/Seakite50_VH/SK50-VH_3d.txt'
-ribs_data = read_from_txt(filename)
+filepath = 'data/V3/V3D_3d.txt'
+#filepath = 'data/Seakite50_VH/SK50-VH_3d.txt'
+ribs_data = read_from_txt(filepath)
 for rib in ribs_data:
     print(rib)
     print('\n')
