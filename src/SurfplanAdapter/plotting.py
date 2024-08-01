@@ -4,12 +4,12 @@ from reading_surfplan_txt import read_from_txt
 from reading_airfoil_dat_files import read_profile
 
 
-def plot_ribs(ribs_data):
+def plot_ribs(ribs_coord):
     """
     Plot kite ribs in 3D.
 
     Parameters:
-    ribs_data (list of list of tuples): A list where each element is a list of two tuples,
+    ribs_coord (list of list of tuples): A list where each element is a list of two tuples,
                                         each tuple containing three floats representing
                                         the x, y, and z coordinates of the rib endpoints.
 
@@ -19,12 +19,12 @@ def plot_ribs(ribs_data):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # Check if there is any data to plot
-    if len(ribs_data) == 0 :
+    if len(ribs_coord) == 0 :
         print("No data to plot.")
         return
     first_rib = True
-    # Iterate through each rib in the ribs_data
-    for rib in ribs_data:
+    # Iterate through each rib in the ribs_coord
+    for rib in ribs_coord:
         # Set the label for the first rib only
         label = 'ribs' if first_rib else ''
 
@@ -111,8 +111,8 @@ def plot_profiles(filepath):
 filepath = 'data/V3/V3D_3d.txt'
 filepath_profile = 'data/V3/profiles/rib_1.dat'
 ribs_data = read_from_txt(filepath)
-ribs_to_plot = [[rib["LE"], rib["TE"]] for rib in ribs_data]
+ribs_coords = [[rib["LE"], rib["TE"]] for rib in ribs_data]
 
 # Plot the data
-plot_ribs(ribs_to_plot)
+plot_ribs(ribs_coords)
 plot_profiles(filepath_profile)
