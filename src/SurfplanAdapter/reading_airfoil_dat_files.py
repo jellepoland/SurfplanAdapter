@@ -25,6 +25,12 @@ def read_profile(filepath):
     x_depth = None                  # Position of the maximum depth of the profile, in % of the chord 
     TE_angle_deg = None             # Angle of the TE
 
+    # Compute tube diameter of the LE
+    # Left empty for now because it is read with the ribs coordinate data in "reading_surfplan_txt"
+    # It could also be determined here geometrically 
+    #
+    #
+
     # Read profile points to find maximum depth and its position
     for line in lines[1:]:
         x, y = map(float, line.split())

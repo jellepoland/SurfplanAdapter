@@ -93,13 +93,18 @@ def read_from_txt(filepath):
         # Extract the directory path
         profile_directory_path = os.path.dirname(filepath) + '/profiles/'   
         # Read camber height from .dat airfoil file
-        camber_height = read_profile(profile_directory_path  + profile_name)["depth"]    
-    
-        airfoil_caracteristics = [tube_diameter, camber_height]   # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
+        airfoil = read_profile(profile_directory_path  + profile_name)
+        camber = airfoil["depth"]    
+        # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
+        # x_camber = airfoil["x_depth"]
+        # TE_angle = airfoil["TE_angle"]
         ribs_data.append({
             "LE" : rib_le, 
             "TE" : rib_te, 
-            "caracteristics" : airfoil_caracteristics
+            "d_tube" : tube_diameter,
+            "camber" : camber
+            # "x_camber" : x_camber,
+            # "TE_angle" : TE_angle
             })
     return ribs_data
 
