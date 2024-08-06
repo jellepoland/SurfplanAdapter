@@ -1,4 +1,5 @@
 from reading_surfplan_txt import read_from_txt
+from transforming_coordinate_system import rotate_surfplan_to_VSM
 import transforming_coordinate_system
 import plotting
 from VSM import Wing, WingAerodynamics
@@ -22,8 +23,8 @@ def generate_VSM_input(filepath):
     wing = Wing(n_panels, "unchanged")
     for rib in ribs_data:
         wing.add_section(
-            rib["LE"],
-            rib["LE"],
+            rotate_surfplan_to_VSM(rib["LE"]),
+            rotate_surfplan_to_VSM(rib["LE"]),
             ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]],
         )
 

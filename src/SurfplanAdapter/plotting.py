@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from reading_surfplan_txt import read_from_txt
 from reading_airfoil_dat_files import read_profile
-
+from transforming_coordinate_system import rotate_surfplan_to_VSM
 
 def plot_ribs(ribs_coord):
     """
@@ -108,11 +108,11 @@ def plot_profiles(filepath):
 
 #Usage 
 # Read the data from the file
-filepath = 'data/V3/V3D_3d.txt'
-filepath_profile = 'data/V3/profiles/rib_1.dat'
+filepath = 'data/default_kite/default_kite_3d.txt'
+filepath_profile = 'data/default_kite/profiles/prof_5.dat'
 ribs_data = read_from_txt(filepath)
-ribs_coords = [[rib["LE"], rib["TE"]] for rib in ribs_data]
-
+ribs_coords_surfplan = [[rib["LE"], rib["TE"]] for rib in ribs_data]
+ribs_coords_vsm = [[rotate_surfplan_to_VSM(rib["LE"]), rotate_surfplan_to_VSM(rib["TE"])] for rib in ribs_data]
 # Plot the data
-plot_ribs(ribs_coords)
+plot_ribs(ribs_coords_vsm)
 plot_profiles(filepath_profile)
