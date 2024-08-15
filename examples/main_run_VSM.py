@@ -4,23 +4,58 @@
 # 3. Run the solver, iteratively for multiple angles of attack
 # 4. Store the results in results folder
 
-import VSM
+from SurfplanAdapter.main_generating_vsm_input import generate_VSM_input
+from VSM import Solver
+import numpy as np
 
-# Load the data
-# get data from txt
-data = load_data("data.txt")
-# get data from .dat
-data.update(load_data("data2.data"))
+# INPUT
+filepath = "data/V3/V3D_3d.txt"  # path of the file to load the data from
 
-wing = VSM.Wing(n_panels=10)
-for dict_i in dict:
-    wing.add_section(dict_i[TE], dict_i[LE], dict_i["aero_input")
-va = [-10, 0, 0]
-# create object wing that has all the aerodynamic data
-wing_aero = WingAerodynamics([wing])
-wing_aero.va = va
+# 1. Load the data
+wing_aero = generate_VSM_input(filepath)
 
-VSM = Solver("VSM")
-result, wing_aero = VSM.solve(wing_aero)
+# 3. Run the solver, iteratively for multiple angles of attack
+VSM = Solver(
+    aerodynamic_model_type="VSM",
+)
 
-wing_aero.plot('cl,cd,alpha')
+aoas = np.arange(0, 21, 1)
+cl_straight = np.zeros(len(aoas))
+cd_straight = np.zeros(len(aoas))
+cs_straight = np.zeros(len(aoas))
+gamma_straight = np.zeros((len(aoas), len(wing_aero.panels)))
+cl_turn = np.zeros(len(aoas))
+cd_turn = np.zeros(len(aoas))
+cs_turn = np.zeros(len(aoas))
+gamma_turn = np.zeros((len(aoas), len(wing_aero.panels)))
+yaw_rate = 1.5
+for i, aoa in enumerate(aoas):
+    aoa = np.deg2rad(aoa)
+    sideslip = 0
+    Umag = 20
+
+    wing_aero.va = (
+        np.array([np.cos(aoa) * np.cos(sideslip), np.sin(sideslip), np.sin(aoa)])
+        * Umag,
+        0,
+    )
+    results, wing_aero = VSM.solve(wing_aero)
+    cl_straight[i] = results["cl"]
+    cd_straight[i] = results["cd"]
+    cs_straight[i] = results["cs"]
+    gamma_straight[i] = results["gamma_distribution"]
+    print(
+        f"Straight: aoa: {aoa}, CL: {cl_straight[i]}, CD: {cd_straight[i]}, CS: {cs_straight[i]}"
+    )
+
+    wing_aero.va = (
+        np.array([np.cos(aoa) * np.cos(sideslip), np.sin(sideslip), np.sin(aoa)])
+        * Umag,
+        yaw_rate,
+    )
+    results, wing_aero = VSM.solve(wing_aero)
+    cl_turn[i] = results["cl"]
+    cd_turn[i] = results["cd"]
+    cs_turn[i] = results["cs"]
+    gamma_turn[i] = results["gamma_distribution"]
+    print(f"Turn: aoa: {aoa}, CL: {cl_turn[i]}, CD: {cd_turn[i]}, CS: {cs_turn[i]}")
