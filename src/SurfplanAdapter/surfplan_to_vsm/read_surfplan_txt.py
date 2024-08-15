@@ -1,10 +1,12 @@
 import numpy as np
 import os
 from pathlib import Path
-from SurfplanAdapter.reading_airfoil_dat_files import read_profile
+from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import (
+    reading_profile_from_airfoil_dat_files,
+)
 
 
-def read_from_txt(filepath):
+def read_surfplan_txt(filepath):
     """
     Read the main characteristics of kite ribs and LE (Leading Edge) tube sections from the .txt file from Surfplan.
 
@@ -79,9 +81,9 @@ def read_from_txt(filepath):
         rib_le = ribs[i][0]
         rib_te = ribs[i][1]
         # Tube diameter
-        tube_diameter = le_tube[i] / np.linalg.norm(
-            rib_te - rib_le
-        )  # normalize tube diameter with local chord
+        # normalize tube diameter with local chord
+        tube_diameter = le_tube[i] / np.linalg.norm(rib_te - rib_le)
+        print(f"tube_diameter: dimensional {le_tube[i]}, normalized {tube_diameter}")
         # Associate each rib with its airfoil .dat file name
         k = n_ribs // 2
         # First case, kite has one central rib
@@ -99,7 +101,9 @@ def read_from_txt(filepath):
         # Extract the directory path
         profile_directory_path = os.path.dirname(filepath) + "/profiles/"
         # Read camber height from .dat airfoil file
-        airfoil = read_profile(profile_directory_path + profile_name)
+        airfoil = reading_profile_from_airfoil_dat_files(
+            profile_directory_path + profile_name
+        )
         camber = airfoil["depth"]
         # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
         # x_camber = airfoil["x_depth"]
@@ -130,7 +134,7 @@ if __name__ == "__main__":
     filepath = Path(root_dir) / "data" / "V3" / "V3D_3d.txt"
 
     # filepath = 'data/Seakite50_VH/SK50-VH_3d.txt'
-    ribs_data = read_from_txt(filepath)
+    ribs_data = read_surfplan_txt(filepath)
     for rib in ribs_data:
         print(rib)
         print("\n")
