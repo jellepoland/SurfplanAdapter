@@ -1,8 +1,7 @@
-from reading_surfplan_txt import read_from_txt
-from transforming_coordinate_system import rotate_surfplan_to_VSM
-import transforming_coordinate_system
-import plotting
-from VSM import Wing, WingAerodynamics
+from SurfplanAdapter.reading_surfplan_txt import read_from_txt
+from SurfplanAdapter.transforming_coordinate_system import rotate_surfplan_to_VSM
+from VSM.WingGeometry import Wing
+from VSM.WingAerodynamics import WingAerodynamics
 
 
 def generate_VSM_input(filepath):
@@ -19,7 +18,7 @@ def generate_VSM_input(filepath):
     ribs_data = read_from_txt(filepath)
     n_panels = len(ribs_data) - 1
 
-    #Create wing geometry
+    # Create wing geometry
     wing = Wing(n_panels, "unchanged")
     for rib in ribs_data:
         wing.add_section(
