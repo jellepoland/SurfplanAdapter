@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 
-def read_profile(filepath):
+def reading_profile_from_airfoil_dat_files(filepath):
     """
     Read main characteristics of an ILE profile from a .dat file.
 
@@ -57,8 +57,8 @@ def read_profile(filepath):
     return {
         "name": profile_name,
         "tube_diameter": tube_diameter,
-        "depth": 100 * depth,
-        "x_depth": 100 * x_depth,
+        "depth": depth,
+        "x_depth": x_depth,
         "TE_angle": TE_angle_deg,
     }
 
@@ -72,17 +72,15 @@ if __name__ == "__main__":
             raise FileNotFoundError(
                 "Could not find the root directory of the repository."
             )
-
     # defining paths
-    filepath = Path(root_dir) / "data" / "V3" / "profiles" / "rib_1.dat"
-
+    filepath = Path(root_dir) / "data" / "V3" / "profiles" / "rib_2.dat"
     # Example usage:
-    profile = read_profile(filepath)
+    profile = reading_profile_from_airfoil_dat_files(filepath)
     profile_name = profile["name"]
     depth = profile["depth"]
     x_depth = profile["x_depth"]
     TE_angle = profile["TE_angle"]
     print(f"Profile Name: {profile_name}")
-    print(f"Highest Point X Coordinate (x_depth): {x_depth} %")
-    print(f"Highest Point Y Coordinate (depth): {depth} %")
+    print(f"Highest Point X Coordinate (x_depth): {x_depth} m")
+    print(f"Highest Point Y Coordinate (depth) CAMBER: {depth} m")
     print(f"TE angle: {TE_angle:.2f}°")

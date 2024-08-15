@@ -84,7 +84,7 @@ dependencies = [
   "numpy", 
   "pandas>=1.5.3", 
   "matplotlib>=3.7.1",
-  "VSM @ git+https://github.com/ocayon/Vortex-Step-Method.git@develop#egg=VSM"
+  "VSM @ git+https://github.com/ocayon/Vortex-Step-Method.git@develop"
 ]
 
 # You can define additional groups of dependencies here (e.g., development dependencies).
