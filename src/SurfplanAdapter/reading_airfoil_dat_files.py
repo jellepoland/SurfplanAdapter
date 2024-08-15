@@ -1,13 +1,12 @@
 import matplotlib.pyplot as plt
 import math
 
-
-def read_profile(filename):
+def read_profile(filepath):
     """
     Read main characteristics of an ILE profile from a .dat file.
 
     Parameters:
-    filename (str): The name of the file containing the profile data. Should be a .dat file
+    filepath (str): The name of the file containing the profile data. Should be a .dat file
 
     The .dat file should follow the XFoil norm: points start at the trailing edge (TE),
     go to the leading edge (LE) through the extrado, and come back to the TE through the intrado.
@@ -16,7 +15,7 @@ def read_profile(filename):
     dict: A dictionary containing the profile name, tube diameter, depth, x_depth, and TE angle.
           The keys are "name", "tube_diameter", "depth", "x_depth", and "TE_angle".
     """
-    with open(filename, 'r') as file:
+    with open(filepath, 'r') as file:
         lines = file.readlines()
     
     # Initialize variables
@@ -25,6 +24,12 @@ def read_profile(filename):
     depth = -float('inf')           # Depth of the profile, in % of the chord 
     x_depth = None                  # Position of the maximum depth of the profile, in % of the chord 
     TE_angle_deg = None             # Angle of the TE
+
+    # Compute tube diameter of the LE
+    # Left empty for now because it is read with the ribs coordinate data in "reading_surfplan_txt"
+    # It could also be determined here geometrically 
+    #
+    #
 
     # Read profile points to find maximum depth and its position
     for line in lines[1:]:
@@ -56,14 +61,13 @@ def read_profile(filename):
 
 
 # Example usage:
-# filename = 'data/default_kite/profiles/prof_1.dat'
-# profile = read_profile(filename)
-# profile_name = profile["name"]
-# depth = profile["depth"]
-# x_depth = profile["x_depth"]
-# TE_angle = profile["TE_angle"]
-# plot_profiles(filename)
-# print(f"Profile Name: {profile_name}")
-# print(f"Highest Point X Coordinate (x_depth): {x_depth} %")
-# print(f"Highest Point Y Coordinate (depth): {depth} %")
-# print(f"TE angle: {TE_angle:.2f}°")
+filepath = 'data/V3/profiles/rib_1.dat'
+profile = read_profile(filepath)
+profile_name = profile["name"]
+depth = profile["depth"]
+x_depth = profile["x_depth"]
+TE_angle = profile["TE_angle"]
+print(f"Profile Name: {profile_name}")
+print(f"Highest Point X Coordinate (x_depth): {x_depth} %")
+print(f"Highest Point Y Coordinate (depth): {depth} %")
+print(f"TE angle: {TE_angle:.2f}°")
