@@ -21,7 +21,7 @@ pip install -e .
 
 ## :eyes: Usage
 
-Inside the examples folder, a script will be present to run the VSM code.
+Inside the examples folder, a script will be present to run an aerodynamic analysis using a [Vortex-Step-Method](https://github.com/ocayon/Vortex-Step-Method).
 There you can specify the necessary file names.
 
 The script will (a) process the files into the desired format and store this in processed_data and (b) read out these files and run the VSM to generate plots and values and store these in the results folder.
