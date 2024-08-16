@@ -40,9 +40,6 @@ def generate_VSM_input(filepath, n_panels, spanwise_panel_distribution):
             transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
             ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]],
         )
-        print(
-            f"ribs_data [LE]: {transform_coordinate_system_surfplan_to_VSM(rib['LE'])}, TE: {transform_coordinate_system_surfplan_to_VSM(rib['TE'])}"
-        )
 
     return WingAerodynamics([wing])
 

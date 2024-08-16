@@ -16,6 +16,7 @@ from SurfplanAdapter.logging_config import *
 from VSM.Solver import Solver
 from VSM.color_palette import set_plot_style
 
+set_plot_style()
 
 # Find the root directory of the repository
 root_dir = os.path.abspath(os.path.dirname(__file__))
@@ -53,7 +54,6 @@ logging.info(f"CL: {results['cl']}, CD: {results['cd']}, CS: {results['cs']}")
 logging.info(f"Gamma distribution: {results['gamma_distribution']}")
 
 # 5. Plotting
-set_plot_style()
 # plotting(
 #     wing_aero,
 #     variable="angle_of_attack",
