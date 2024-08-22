@@ -56,10 +56,11 @@ plotting.plot_geometry(
 # cl,cd,cs coefficients are flipped to "normal ref frame"
 # x (+) downstream, y(+) left and z-up reference frame
 solver = Solver(aerodynamic_model_type="VSM")
-result, wing_aero = solver.solve(wing_aero)
+result = solver.solve(wing_aero)
 
 ### plotting distributions
 plotting.plot_distribution(
+    y_coordinates_list=[[panel.aerodynamic_center[1] for panel in wing_aero.panels]],
     results_list=[result],
     label_list=["V3"],
     title="spanwise_distributions",

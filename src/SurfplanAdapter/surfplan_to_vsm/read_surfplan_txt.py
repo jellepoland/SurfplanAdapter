@@ -136,4 +136,5 @@ if __name__ == "__main__":
     ribs_data = read_surfplan_txt(filepath)
     for rib in ribs_data:
         print(rib)
-        print("\n")
+        # print("\n")
+        # print(rib["d_tube"])
