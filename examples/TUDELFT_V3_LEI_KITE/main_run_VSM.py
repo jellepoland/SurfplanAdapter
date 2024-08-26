@@ -24,7 +24,7 @@ while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
         raise FileNotFoundError("Could not find the root directory of the repository.")
 
 # defining paths
-filepath = Path(root_dir) / "data" / "V3" / "V3D_3d.txt"
+filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
 # filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
 
 # 1. Load the data
@@ -33,7 +33,10 @@ wing_aero = generate_VSM_input(
     n_panels=30,
     spanwise_panel_distribution="linear",
     is_save_geometry=True,
-    csv_file_path=Path(root_dir) / "processed_data" / "V3" / "geometry.csv",
+    csv_file_path=Path(root_dir)
+    / "processed_data"
+    / "TUDELFT_V3_LEI_KITE"
+    / "geometry.csv",
 )
 
 # 2. Set the flow conditions
@@ -46,7 +49,7 @@ wing_aero.va = (
 )
 
 # ### Plotting the wing
-save_path = Path(root_dir) / "examples" / "V3" / "results"
+save_path = Path(root_dir) / "examples" / "TUDELFT_V3_LEI_KITE" / "results"
 plotting.plot_geometry(
     wing_aero,
     title="geometry",

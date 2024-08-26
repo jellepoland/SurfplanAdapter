@@ -73,7 +73,9 @@ if __name__ == "__main__":
                 "Could not find the root directory of the repository."
             )
     # defining paths
-    filepath = Path(root_dir) / "data" / "V3" / "profiles" / "rib_2.dat"
+    filepath = (
+        Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles" / "rib_2.dat"
+    )
     # Example usage:
     profile = reading_profile_from_airfoil_dat_files(filepath)
     profile_name = profile["name"]

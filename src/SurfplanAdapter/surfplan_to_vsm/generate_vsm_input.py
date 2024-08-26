@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 "Could not find the root directory of the repository."
             )
     # defining paths
-    filepath = Path(root_dir) / "data" / "V3" / "V3D_3d.txt"
+    filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
     wing_aero = generate_VSM_input(
         filepath, n_panels=50, spanwise_panel_distribution="linear"
     )

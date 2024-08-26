@@ -130,7 +130,7 @@ if __name__ == "__main__":
                 "Could not find the root directory of the repository."
             )
     # Example usage:
-    filepath = Path(root_dir) / "data" / "V3" / "V3D_3d.txt"
+    filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
 
     # filepath = 'data/Seakite50_VH/SK50-VH_3d.txt'
     ribs_data = read_surfplan_txt(filepath)
