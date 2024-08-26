@@ -9,6 +9,7 @@ from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM
 )
 from VSM.WingGeometry import Wing
 from VSM.WingAerodynamics import WingAerodynamics
+from VSM.plotting import plot_geometry
 
 
 def generate_VSM_input(
@@ -39,6 +40,22 @@ def generate_VSM_input(
         key=lambda rib: transform_coordinate_system_surfplan_to_VSM(rib["LE"])[1],
         reverse=True,
     )
+
+    # Create wing geometry
+    wing = Wing(n_panels, spanwise_panel_distribution)
+    row_input_list = []
+    for rib in ribs_data:
+        LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
+        TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
+        airfoil_input = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
+        wing.add_section(LE, TE, airfoil_input)
+        row_input_list.append([LE, TE, airfoil_input])
+        # wing.add_section(
+        #     transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
+        #     transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
+        #     ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]],
+        # )
+
     # Save wing geometry in a csv file
     if is_save_geometry:
         if csv_file_path is None:
@@ -52,23 +69,21 @@ def generate_VSM_input(
             writer.writerow(
                 ["LE_x", "LE_y", "LE_z", "TE_x", "TE_y", "TE_z", "d_tube", "camber"]
             )
-
             # Write the data for each rib
-            for rib in ribs_data:
-                le_x, le_y, le_z = rib["LE"]
-                te_x, te_y, te_z = rib["TE"]
-                d_tube = rib["d_tube"]
-                camber = rib["camber"]
-                writer.writerow([le_x, le_y, le_z, te_x, te_y, te_z, d_tube, camber])
-
-    # Create wing geometry
-    wing = Wing(n_panels, spanwise_panel_distribution)
-    for rib in ribs_data:
-        wing.add_section(
-            transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
-            transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
-            ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]],
-        )
+            for row in row_input_list:
+                print(f"row:{row}")
+                writer.writerow(
+                    [
+                        row[0][0],
+                        row[0][1],
+                        row[0][2],
+                        row[1][0],
+                        row[1][1],
+                        row[1][2],
+                        row[2][1][0],
+                        row[2][1][1],
+                    ]
+                )
 
     return WingAerodynamics([wing])
 
@@ -85,7 +100,14 @@ if __name__ == "__main__":
     # defining paths
     filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
     wing_aero = generate_VSM_input(
-        filepath, n_panels=50, spanwise_panel_distribution="linear"
+        filepath,
+        n_panels=50,
+        spanwise_panel_distribution="linear",
+        is_save_geometry=True,
+        csv_file_path=Path(root_dir)
+        / "processed_data"
+        / "TUDELFT_V3_LEI_KITE"
+        / "geometry.csv",
     )
 
     # setting arbitrary flow conditions
@@ -101,4 +123,11 @@ if __name__ == "__main__":
     )
 
     # plotting
-    wing_aero.plot()
+    plot_geometry(
+        wing_aero,
+        title="geometry",
+        data_type=".pdf",
+        is_save=False,
+        is_show=True,
+        save_path=None,
+    )
