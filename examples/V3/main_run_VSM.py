@@ -29,7 +29,11 @@ filepath = Path(root_dir) / "data" / "V3" / "V3D_3d.txt"
 
 # 1. Load the data
 wing_aero = generate_VSM_input(
-    filepath, n_panels=30, spanwise_panel_distribution="linear"
+    filepath,
+    n_panels=30,
+    spanwise_panel_distribution="linear",
+    is_save_geometry=True,
+    csv_file_path=Path(root_dir) / "processed_data" / "V3" / "geometry.csv",
 )
 
 # 2. Set the flow conditions
@@ -63,7 +67,7 @@ plotting.plot_distribution(
     y_coordinates_list=[[panel.aerodynamic_center[1] for panel in wing_aero.panels]],
     results_list=[result],
     label_list=["V3"],
-    title="spanwise_distributions",
+    title=f"spanwise_distributions for aoa:{np.rad2deg(aoa):.1f} [deg]",
     data_type=".pdf",
     save_path=save_path,
     is_save=True,

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import numpy as np
+import csv
 
 from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
 from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
@@ -10,7 +11,13 @@ from VSM.WingGeometry import Wing
 from VSM.WingAerodynamics import WingAerodynamics
 
 
-def generate_VSM_input(filepath, n_panels, spanwise_panel_distribution):
+def generate_VSM_input(
+    filepath,
+    n_panels,
+    spanwise_panel_distribution,
+    is_save_geometry=False,
+    csv_file_path=None,
+):
     """
     Generate Input for the Vortex Step Method
 
@@ -32,6 +39,28 @@ def generate_VSM_input(filepath, n_panels, spanwise_panel_distribution):
         key=lambda rib: transform_coordinate_system_surfplan_to_VSM(rib["LE"])[1],
         reverse=True,
     )
+    # Save wing geometry in a csv file
+    if is_save_geometry:
+        if csv_file_path is None:
+            raise ValueError("You must provide a csv_file_path.")
+        if not os.path.exists(csv_file_path):
+            os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+
+        with open(csv_file_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            # Write the header
+            writer.writerow(
+                ["LE_x", "LE_y", "LE_z", "TE_x", "TE_y", "TE_z", "d_tube", "camber"]
+            )
+
+            # Write the data for each rib
+            for rib in ribs_data:
+                le_x, le_y, le_z = rib["LE"]
+                te_x, te_y, te_z = rib["TE"]
+                d_tube = rib["d_tube"]
+                camber = rib["camber"]
+                writer.writerow([le_x, le_y, le_z, te_x, te_y, te_z, d_tube, camber])
+
     # Create wing geometry
     wing = Wing(n_panels, spanwise_panel_distribution)
     for rib in ribs_data:
