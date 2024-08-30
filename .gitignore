@@ -1,7 +1,29 @@
 # User defined files and folders
 data/
+!data/default_kite/
+!data/default_kite/*
+!data/default_kite/*/*
+!data/TUDELFT_V3_LEI_KITE/
+!data/TUDELFT_V3_LEI_KITE/*
+!data/TUDELFT_V3_LEI_KITE/*/*
+
 processed_data/
+!processed_data/default_kite/
+!processed_data/default_kite/*
+!processed_data/default_kite/*/*
+!processed_data/TUDELFT_V3_LEI_KITE/
+!processed_data/TUDELFT_V3_LEI_KITE/*
+!processed_data/TUDELFT_V3_LEI_KITE/*/*
+
 results/
+!results/default_kite/
+!results/default_kite/*
+!results/default_kite/*/*
+!results/TUDELFT_V3_LEI_KITE/
+!results/TUDELFT_V3_LEI_KITE/*
+!results/TUDELFT_V3_LEI_KITE/*/*
+
+
 
 
 # Byte-compiled / optimized / DLL files
