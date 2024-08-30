@@ -24,8 +24,6 @@ results/
 !results/TUDELFT_V3_LEI_KITE/*/*
 
 
-
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
