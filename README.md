@@ -80,7 +80,7 @@ We welcome contributions to this project! Whether you're reporting a bug, sugges
 
 
 ## :eyes: Usage
-Inside the examples folder, the `main_run_VSM.py` script is present that goes through the main steps for the [TUDELFT_V3_LEI_KITE](https://github.com/awegroup/TUDELFT_V3_LEI_KITE) kite SurfPlan files, in the following order.  
+Inside the examples folder, the [main_run_VSM.py](examples/TUDELFT_V3_LEI_KITE/main_run_VSM.py) script is present that goes through the main steps for the [TUDELFT_V3_LEI_KITE](https://github.com/awegroup/TUDELFT_V3_LEI_KITE) kite SurfPlan files, in the following order.  
 1. Loading the surfplan files from the data folder. 
 2. Transforming the data into the appropriate format and store it inside the processed_data folder as .csv
 3. Running an aerodynamic analysis using the [Vortex-Step-Method (VSM)](https://github.com/ocayon/Vortex-Step-Method)
