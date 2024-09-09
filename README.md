@@ -1,5 +1,5 @@
 # Description
-SurfplanAdapter, that calls VSM and runs aerodynamic analysis on kite designs.
+Reads out [SurfPlan](http://www.surfplan.com.au/sp/) native export, transforms the data structure, and runs an aerodynamic analysis using the [Vortex-Step-Method (VSM)](https://github.com/ocayon/Vortex-Step-Method) on your kite design.
 
 ## Installation Instructions
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install
@@ -80,10 +80,16 @@ We welcome contributions to this project! Whether you're reporting a bug, sugges
 
 
 ## :eyes: Usage
+Inside the examples folder, the `main_run_VSM.py` script is present that goes through the main steps for the [TUDELFT_V3_LEI_KITE](https://github.com/awegroup/TUDELFT_V3_LEI_KITE) kite SurfPlan files, in the following order.  
+1. Loading the surfplan files from the data folder. 
+2. Transforming the data into the appropriate format and store it inside the processed_data folder as .csv
+3. Running an aerodynamic analysis using the [Vortex-Step-Method (VSM)](https://github.com/ocayon/Vortex-Step-Method)
+4. Storing the outcome in the results folder.
 
-Inside the examples folder, a script is present that runs an aerodynamic analysis using the [Vortex-Step-Method](https://github.com/ocayon/Vortex-Step-Method), on your Surfplan model.
-
-The script will (a) process the files into the desired format and store this in processed_data and (b) read out these files and run the VSM to generate plots and values and store these in the results folder.
+To use this code on your kite designs from SurfPlan, one needs to:
+1. Acquire the .txt and rib profiles in .dat format from the SurfPlan export menu
+2. Install this code and insert the SurfPlan exported files into the data folder
+3. Adjust the path inside the `main_run_VSM.py` code to where your files are stored and press run!
 
 ## Citation
 If you use this project in your research, please consider citing it. 
