@@ -23,11 +23,11 @@ while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
     if root_dir == "/":
         raise FileNotFoundError("Could not find the root directory of the repository.")
 
-# defining paths
+# 1. Defining paths
 filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
 # filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
 
-# 1. Load the data
+# 2. Transforming the data into VSM input format
 wing_aero = generate_VSM_input(
     filepath,
     n_panels=30,
