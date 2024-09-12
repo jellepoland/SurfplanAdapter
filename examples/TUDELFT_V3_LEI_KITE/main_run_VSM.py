@@ -23,22 +23,28 @@ while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
     if root_dir == "/":
         raise FileNotFoundError("Could not find the root directory of the repository.")
 
-# 1. Defining paths
-filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
-# filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
+# 1. USER INPUTS
+kite_name = "V9_60J_4_55_scallops"
 
 # 2. Transforming the data into VSM input format
+# filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
+# filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
+code_dir = Path(root_dir).parent
+filepath = (
+    Path(code_dir)
+    / "kitepower"
+    / "confidential"
+    / "VSM_V9.60"
+    / "V9.60J-4.55_scallops_3d.txt"
+)
+
 wing_aero = generate_VSM_input(
     filepath,
     n_panels=30,
     spanwise_panel_distribution="linear",
     is_save_geometry=True,
-    csv_file_path=Path(root_dir)
-    / "processed_data"
-    / "TUDELFT_V3_LEI_KITE"
-    / "geometry.csv",
+    csv_file_path=Path(root_dir) / "processed_data" / "kite_name" / "geometry.csv",
 )
-
 # 2. Set the flow conditions
 aoa = np.deg2rad(10)
 sideslip = 0
@@ -49,7 +55,7 @@ wing_aero.va = (
 )
 
 # ### Plotting the wing
-save_path = Path(root_dir) / "examples" / "TUDELFT_V3_LEI_KITE" / "results"
+save_path = Path(root_dir) / "examples" / kite_name / "results"
 plotting.plot_geometry(
     wing_aero,
     title="geometry",
