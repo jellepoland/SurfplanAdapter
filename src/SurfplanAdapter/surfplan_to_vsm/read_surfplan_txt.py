@@ -48,7 +48,7 @@ def read_surfplan_txt(filepath):
             if line.isdigit():
                 n_ribs = int(line)
                 continue
-            values = list(map(float, line.split(",")))
+            values = list(map(float, line.replace(",", ".").split(";")))
             if len(values) == 9:
                 le = np.array(values[0:3])  # Leading edge position
                 te = np.array(values[3:6])  # Trailing edge position
@@ -64,7 +64,7 @@ def read_surfplan_txt(filepath):
             if line.isdigit():
                 n_le_sections = int(line)
                 continue
-            values = list(map(float, line.split(",")))
+            values = list(map(float, line.replace(",", ".").split(";")))
             if len(values) == 4:
                 # centre = np.array(values[0:3])  #centre position [x,y,y] of the LE tube section
                 diameter = values[3]  # Diameter of the LE tube section
