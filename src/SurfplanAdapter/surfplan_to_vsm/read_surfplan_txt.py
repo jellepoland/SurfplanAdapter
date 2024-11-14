@@ -21,11 +21,11 @@ def read_surfplan_txt(filepath):
         lines = file.readlines()
 
     ribs_data = []  # Output list to store the ribs' data
-    ribs = (
-        []
-    )  # List to store rib data: [LE position [x,y,z], TE position [x,y,z], Up vector VUP [x,y,z]]
+    ribs = []       # List to store rib data: [LE position [x,y,z], TE position [x,y,z], Up vector VUP [x,y,z]]
+    wingtip = []    # List to store wingtip  data 
     le_tube = []  # List to store diameters of the LE tube sections
     n_ribs = 0  # Number of ribs
+    n_wingtip_segments = 0 # Number of wingtip segments
     n_le_sections = 0  # Number of LE sections
     txt_section = None  # Current section being read ('ribs' or 'le_tube')
 
@@ -33,6 +33,9 @@ def read_surfplan_txt(filepath):
         line = line.strip()
         if line.startswith("3d rib positions"):
             txt_section = "ribs"
+            continue
+        elif line.startswith("3d curved wingtip positions"):
+            txt_section = "wingtip"
             continue
         elif line.startswith("LE tube"):
             txt_section = "le_tube"
@@ -54,6 +57,24 @@ def read_surfplan_txt(filepath):
                 te = np.array(values[3:6])  # Trailing edge position
                 vup = np.array(values[6:9])  # Up vector
                 ribs.append([le, te, vup])
+        
+        # Read kite wingtips ribs 
+        if txt_section == "wingtip":
+            if not line:  # Empty line indicates the end of the section
+                txt_section = None
+                continue
+            if not any(char.isdigit() for char in line):
+                continue  # Skip comment lines
+            if line.isdigit():
+                n_wingtip_segments = int(line)
+                continue
+            values = list(map(float, line.replace(",", ".").split(";")))
+            if len(values) == 9:
+                le = np.array(values[0:3])  # Leading edge position
+                te = np.array(values[3:6])  # Trailing edge position
+                vup = np.array(values[6:9])  # Up vector
+                wingtip.append([le, te, vup])
+
         # Read Kite LE tube and store data in le_tube
         elif txt_section == "le_tube":
             if not line:  # Empty line indicates the end of the section
@@ -70,19 +91,15 @@ def read_surfplan_txt(filepath):
                 diameter = values[3]  # Diameter of the LE tube section
                 # le_tube.append([centre, diam])
                 le_tube.append(diameter)
-
-    # LE tube sections list is bigger than ribs list because the wingtip are decomposed of more LE section than ribs
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
-    wingtip_size = int((n_le_sections - n_ribs) / 2)
-    le_tube = le_tube[wingtip_size:-wingtip_size]
-
+    le_tube_without_wingtips = np.concatenate(([le_tube[0]], le_tube[n_wingtip_segments+1:-n_wingtip_segments-1], [le_tube[-1]]))
     for i in range(n_ribs):
         # Rib position
         rib_le = ribs[i][0]
         rib_te = ribs[i][1]
         # Tube diameter
         # normalize tube diameter with local chord
-        tube_diameter = le_tube[i] / np.linalg.norm(rib_te - rib_le)
+        tube_diameter = le_tube_without_wingtips[i] / np.linalg.norm(rib_te - rib_le)
         # Associate each rib with its airfoil .dat file name
         k = n_ribs // 2
         # First case, kite has one central rib
@@ -117,6 +134,40 @@ def read_surfplan_txt(filepath):
                 # "TE_angle" : TE_angle
             }
         )
+    #Wingtip airfoil is the read from the last profile
+    wingtip_airfoil = reading_profile_from_airfoil_dat_files(
+        os.path.dirname(filepath) + f"/profiles/prof_{(n_ribs +1)//2}.dat"
+        )
+    # Insert wingtips segments ribs 
+    for i in range(n_wingtip_segments-1, -1, -1):
+        wt_le = wingtip[i][0]
+        wt_te = wingtip[i][1]
+        tube_diameter = le_tube[i+1] / np.linalg.norm(rib_te - rib_le)
+        camber = wingtip_airfoil["depth"]
+        # x_camber = airfoil["x_depth"]
+        # TE_angle = airfoil["TE_angle"]
+        # Insert right wingtips segments ribs
+        ribs_data.insert(1, 
+            {
+                "LE": wt_le,
+                "TE": wt_te,
+                "d_tube": tube_diameter,
+                "camber": camber,
+                # "x_camber" : x_camber,
+                # "TE_angle" : TE_angle
+            }
+        )
+        # Insert left wingtips segments ribs
+        ribs_data.insert(-1, 
+            {
+                "LE": np.array([-wt_le[0],wt_le[1],wt_le[2]]),
+                "TE": np.array([-wt_te[0],wt_te[1],wt_te[2]]),
+                "d_tube": tube_diameter,
+                "camber": camber,
+                # "x_camber" : x_camber,
+                # "TE_angle" : TE_angle
+            }        
+        )
     return ribs_data
 
 
@@ -130,7 +181,7 @@ if __name__ == "__main__":
                 "Could not find the root directory of the repository."
             )
     # Example usage:
-    filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
+    filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
 
     # filepath = 'data/Seakite50_VH/SK50-VH_3d.txt'
     ribs_data = read_surfplan_txt(filepath)
