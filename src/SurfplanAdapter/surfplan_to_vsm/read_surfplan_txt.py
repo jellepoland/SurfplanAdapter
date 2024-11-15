@@ -134,40 +134,43 @@ def read_surfplan_txt(filepath):
                 # "TE_angle" : TE_angle
             }
         )
-    #Wingtip airfoil is the read from the last profile
-    wingtip_airfoil = reading_profile_from_airfoil_dat_files(
-        os.path.dirname(filepath) + f"/profiles/prof_{(n_ribs +1)//2}.dat"
-        )
-    # Insert wingtips segments ribs 
-    for i in range(n_wingtip_segments-1, -1, -1):
-        wt_le = wingtip[i][0]
-        wt_te = wingtip[i][1]
-        tube_diameter = le_tube[i+1] / np.linalg.norm(rib_te - rib_le)
-        camber = wingtip_airfoil["depth"]
-        # x_camber = airfoil["x_depth"]
-        # TE_angle = airfoil["TE_angle"]
-        # Insert right wingtips segments ribs
-        ribs_data.insert(1, 
-            {
-                "LE": wt_le,
-                "TE": wt_te,
-                "d_tube": tube_diameter,
-                "camber": camber,
-                # "x_camber" : x_camber,
-                # "TE_angle" : TE_angle
-            }
-        )
-        # Insert left wingtips segments ribs
-        ribs_data.insert(-1, 
-            {
-                "LE": np.array([-wt_le[0],wt_le[1],wt_le[2]]),
-                "TE": np.array([-wt_te[0],wt_te[1],wt_te[2]]),
-                "d_tube": tube_diameter,
-                "camber": camber,
-                # "x_camber" : x_camber,
-                # "TE_angle" : TE_angle
-            }        
-        )
+    if len(wingtip) > 0:    #if wingtips segments are described in the export file, insert them in ribs data
+        #Wingtip airfoil is the read from the last profile
+        wingtip_airfoil = reading_profile_from_airfoil_dat_files(
+            os.path.dirname(filepath) + f"/profiles/prof_{(n_ribs +1)//2}.dat"
+            )
+        # Insert wingtips segments ribs 
+        for i in range(n_wingtip_segments-1, -1, -1):
+            wt_le = wingtip[i][0]
+            wt_te = wingtip[i][1]
+            tube_diameter = le_tube[i+1] / np.linalg.norm(rib_te - rib_le)
+            camber = wingtip_airfoil["depth"]
+            # x_camber = airfoil["x_depth"]
+            # TE_angle = airfoil["TE_angle"]
+            # Insert right wingtips segments ribs
+            ribs_data.insert(1, 
+                {
+                    "LE": wt_le,
+                    "TE": wt_te,
+                    "d_tube": tube_diameter,
+                    "camber": camber,
+                    # "x_camber" : x_camber,
+                    # "TE_angle" : TE_angle
+                }
+            )
+            # Insert left wingtips segments ribs
+            ribs_data.insert(-1, 
+                {
+                    "LE": np.array([-wt_le[0],wt_le[1],wt_le[2]]),
+                    "TE": np.array([-wt_te[0],wt_te[1],wt_te[2]]),
+                    "d_tube": tube_diameter,
+                    "camber": camber,
+                    # "x_camber" : x_camber,
+                    # "TE_angle" : TE_angle
+                }        
+            )
+        #Delete wingtip rib that as been replaced by wingtips segment ribs
+        ribs_data = ribs_data[1:-1]
     return ribs_data
 
 
