@@ -2,6 +2,7 @@
 /data/*
 /processed_data/*
 /results/*
+/examples/*
 
 # Explicitly include specific subdirectories
 !data/default_kite/
@@ -18,6 +19,11 @@
 /results/default_kite/**
 !results/TUDELFT_V3_LEI_KITE/
 /results/TUDELFT_V3_LEI_KITE/**
+
+!examples/default_kite/
+/examples/default_kite/**
+!examples/TUDELFT_V3_LEI_KITE/
+/examples/TUDELFT_V3_LEI_KITE/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
