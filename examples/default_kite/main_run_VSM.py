@@ -15,6 +15,8 @@ from SurfplanAdapter.surfplan_to_vsm.generate_vsm_input import (
 from SurfplanAdapter.logging_config import *
 from VSM.Solver import Solver
 import VSM.plotting as plotting
+from VSM.interactive import interactive_plot
+
 
 # Find the root directory of the repository
 root_dir = os.path.abspath(os.path.dirname(__file__))
@@ -33,11 +35,20 @@ wing_aero = generate_VSM_input(
     n_panels=30,
     spanwise_panel_distribution="linear",
     is_save_geometry=True,
-    csv_file_path=Path(root_dir)
-    / "processed_data"
-    / "default_kite"
-    / "geometry.csv",
+    csv_file_path=Path(root_dir) / "processed_data" / "default_kite" / "geometry.csv",
 )
+
+
+# interactive plot
+interactive_plot(
+    wing_aero,
+    vel=3.15,
+    angle_of_attack=6.75,
+    side_slip=0,
+    yaw_rate=0,
+    is_with_aerodynamic_details=True,
+)
+
 
 # 2. Set the flow conditions
 aoa = np.deg2rad(10)
@@ -50,14 +61,14 @@ wing_aero.va = (
 
 # ### Plotting the wing
 save_path = Path(root_dir) / "examples" / "default_kite" / "results"
-plotting.plot_geometry(
-    wing_aero,
-    title="geometry",
-    data_type=".pdf",
-    save_path=save_path,
-    is_save=True,
-    is_show=True,
-)
+# plotting.plot_geometry(
+#     wing_aero,
+#     title="geometry",
+#     data_type=".pdf",
+#     save_path=save_path,
+#     is_save=True,
+#     is_show=True,
+# )
 
 ### Solve the aerodynamics
 # cl,cd,cs coefficients are flipped to "normal ref frame"
