@@ -184,9 +184,15 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         )
 
         # Insert wingtips segments ribs
+        previous_wt_te = wingtip[-1][1]
+        print(previous_wt_te)
         for i in range(n_wingtip_segments - 1, -1, -1):
-            wt_le = wingtip[i][0]
             wt_te = wingtip[i][1]
+            # Condition to not read wingtips segments that have the same TE (resulting in triangular panels)
+            if np.array_equal(wt_te, previous_wt_te):
+                continue
+            previous_wt_te = wt_te
+            wt_le = wingtip[i][0]
             tube_diameter = le_tube[i + 1] / np.linalg.norm(rib_te - rib_le)
             camber = wingtip_airfoil["depth"]
             # x_camber = airfoil["x_depth"]
