@@ -228,19 +228,10 @@ def read_surfplan_txt(filepath, airfoil_input_type):
 
 
 if __name__ == "__main__":
-    # Find the root directory of the repository
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
-        root_dir = os.path.abspath(os.path.join(root_dir, ".."))
-        if root_dir == "/":
-            raise FileNotFoundError(
-                "Could not find the root directory of the repository."
-            )
-    # Example usage:
-    filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
+    from SurfplanAdapter.utils import project_dir
 
-    # filepath = 'data/Seakite50_VH/SK50-VH_3d.txt'
-    ribs_data = read_surfplan_txt(filepath)
+    filepath = Path(project_dir) / "data" / "default_kite" / "default_kite_3d.txt"
+    ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
     for rib in ribs_data:
         print(rib)
         # print("\n")

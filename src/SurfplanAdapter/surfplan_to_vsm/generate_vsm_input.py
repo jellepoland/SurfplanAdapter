@@ -7,6 +7,7 @@ from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
 from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
+from SurfplanAdapter.utils import project_dir
 from VSM.WingGeometry import Wing
 from VSM.WingAerodynamics import WingAerodynamics
 from VSM.plotting import plot_geometry
@@ -67,9 +68,9 @@ def sort_ribs_by_proximity(ribs_data):
 
 
 def generate_VSM_input(
-    filepath,
-    n_panels,
-    spanwise_panel_distribution,
+    kite_name: str,
+    n_panels: int,
+    spanwise_panel_distribution: str = "linear",
     airfoil_input_type: str = "lei_airfoil_breukels",
     is_save_geometry=False,
     csv_file_path=None,
@@ -87,6 +88,8 @@ def generate_VSM_input(
     Returns:
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
+    filepath = Path(project_dir) / "data" / f"{kite_name}" / f"{kite_name}_3d.txt"
+
     ribs_data = read_surfplan_txt(filepath, airfoil_input_type)
     # Sorting ribs data
     ribs_data = sort_ribs_by_proximity(ribs_data)
@@ -149,22 +152,15 @@ def generate_VSM_input(
 
 
 if __name__ == "__main__":
-    # Find the root directory of the repository
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
-        root_dir = os.path.abspath(os.path.join(root_dir, ".."))
-        if root_dir == "/":
-            raise FileNotFoundError(
-                "Could not find the root directory of the repository."
-            )
+
+    kite_name = "TUDELFT_V3_LEI_KITE"
     # defining paths
-    filepath = Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "V3D_3d.txt"
     wing_aero = generate_VSM_input(
-        filepath,
+        kite_name,
         n_panels=50,
         spanwise_panel_distribution="linear",
         is_save_geometry=True,
-        csv_file_path=Path(root_dir)
+        csv_file_path=Path(project_dir)
         / "processed_data"
         / "TUDELFT_V3_LEI_KITE"
         / "geometry.csv",
