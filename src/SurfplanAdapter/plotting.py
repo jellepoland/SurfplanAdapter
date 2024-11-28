@@ -134,10 +134,9 @@ if __name__ == "__main__":
                 "Could not find the root directory of the repository."
             )
     # defining paths
-    filepath = Path(root_dir) / "data" / "default_kite" / "default_kite_3d.txt"
-    filepath_profile = (
-        Path(root_dir) / "data" / "default_kite" / "profiles" / "prof_5.dat"
-    )
+    kite_name = "default_kite"
+    kite_name = "TUDELFT_V3_LEI_KITE"
+    filepath = Path(root_dir) / "data" / f"{kite_name}" / f"V3D_3d.txt"
 
     ribs_data = read_surfplan_txt(filepath)
     ribs_coords_surfplan = [[rib["LE"], rib["TE"]] for rib in ribs_data]
@@ -150,4 +149,14 @@ if __name__ == "__main__":
     ]
     # Plot the data
     plot_ribs(ribs_coords_vsm)
-    plot_profiles(filepath_profile)
+
+    profile_dir = Path(root_dir) / "data" / kite_name / "profiles"
+
+    # Ensure the directory exists
+    if profile_dir.is_dir():
+        for file_name in profile_dir.iterdir():
+            # Check if the file name starts with "prof" and ends with ".dat"
+            if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
+                plot_profiles(file_name)
+    else:
+        print(f"Directory {profile_dir} does not exist.")

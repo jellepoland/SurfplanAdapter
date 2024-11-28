@@ -12,10 +12,65 @@ from VSM.WingAerodynamics import WingAerodynamics
 from VSM.plotting import plot_geometry
 
 
+def sort_ribs_by_proximity(ribs_data):
+    # Helper function to calculate radial distance
+    def radial_distance(point1, point2):
+        return np.linalg.norm(np.array(point1) - np.array(point2))
+
+    # Transform the leading-edge points
+    transformed_ribs = [
+        {"rib": rib, "LE_point": transform_coordinate_system_surfplan_to_VSM(rib["LE"])}
+        for rib in ribs_data
+    ]
+
+    # Find the rib with the farthest point with positive y-coordinate
+    farthest_rib = None
+    max_distance = -1
+    for rib_data in transformed_ribs:
+        LE_point = rib_data["LE_point"]
+        if LE_point[1] > 0:  # Ensure the y-coordinate is positive
+            total_distance = sum(
+                radial_distance(LE_point, other["LE_point"])
+                for other in transformed_ribs
+            )
+            if total_distance > max_distance:
+                max_distance = total_distance
+                farthest_rib = rib_data
+
+    if not farthest_rib:
+        raise ValueError(
+            "No rib has a positive y-coordinate in its leading-edge point."
+        )
+
+    # Remove the farthest rib and use it as the starting point
+    sorted_ribs = [farthest_rib]
+    remaining_ribs = [
+        rib_data
+        for rib_data in transformed_ribs
+        if not np.allclose(rib_data["LE_point"], farthest_rib["LE_point"])
+    ]
+
+    # Iteratively sort the remaining ribs based on proximity
+    while remaining_ribs:
+        last_point = sorted_ribs[-1]["LE_point"]
+        closest_index = min(
+            range(len(remaining_ribs)),
+            key=lambda i: radial_distance(last_point, remaining_ribs[i]["LE_point"]),
+        )
+        closest_rib = remaining_ribs.pop(closest_index)
+        sorted_ribs.append(closest_rib)
+
+    # Extract the sorted ribs
+    sorted_ribs_data = [rib_data["rib"] for rib_data in sorted_ribs]
+
+    return sorted_ribs_data
+
+
 def generate_VSM_input(
     filepath,
     n_panels,
     spanwise_panel_distribution,
+    airfoil_input_type: str = "lei_airfoil_breukels",
     is_save_geometry=False,
     csv_file_path=None,
 ):
@@ -32,14 +87,9 @@ def generate_VSM_input(
     Returns:
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
-    ribs_data = read_surfplan_txt(filepath)
-
-    # Sorting TRANSFORMED ribs by y-coordinate (should be from positive to negative)
-    ribs_data = sorted(
-        ribs_data,
-        key=lambda rib: transform_coordinate_system_surfplan_to_VSM(rib["LE"])[1],
-        reverse=True,
-    )
+    ribs_data = read_surfplan_txt(filepath, airfoil_input_type)
+    # Sorting ribs data
+    ribs_data = sort_ribs_by_proximity(ribs_data)
 
     # Create wing geometry
     wing = Wing(n_panels, spanwise_panel_distribution)
@@ -47,9 +97,16 @@ def generate_VSM_input(
     for rib in ribs_data:
         LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
-        airfoil_input = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
-        wing.add_section(LE, TE, airfoil_input)
-        row_input_list.append([LE, TE, airfoil_input])
+        if airfoil_input_type == "lei_airfoil_breukels":
+            polar_data = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
+        elif airfoil_input_type == "polar_data":
+            polar_data = ["polar_data", rib["polar_data"]]
+        else:
+            raise ValueError(
+                f"current airfoil_input_type: {airfoil_input_type} is not recognized, change string value"
+            )
+        wing.add_section(LE, TE, polar_data)
+        row_input_list.append([LE, TE, polar_data])
         # wing.add_section(
         #     transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
         #     transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
@@ -58,6 +115,10 @@ def generate_VSM_input(
 
     # Save wing geometry in a csv file
     if is_save_geometry:
+        if airfoil_input_type != "lei_airfoil_breukels":
+            raise ValueError(
+                f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
+            )
         if csv_file_path is None:
             raise ValueError("You must provide a csv_file_path.")
         if not os.path.exists(csv_file_path):
@@ -71,7 +132,6 @@ def generate_VSM_input(
             )
             # Write the data for each rib
             for row in row_input_list:
-                print(f"row:{row}")
                 writer.writerow(
                     [
                         row[0][0],
