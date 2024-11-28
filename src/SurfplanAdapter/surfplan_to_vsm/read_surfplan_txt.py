@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 from pathlib import Path
 from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import (
@@ -6,7 +7,33 @@ from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import 
 )
 
 
-def read_surfplan_txt(filepath):
+def read_airfoil_polar_data(
+    airfoil_input_type: str, kite_dir_path: Path, profile_name: str
+):
+    if airfoil_input_type == "lei_airfoil_breukels":
+        polar_data_i = None
+        return polar_data_i
+    elif airfoil_input_type == "polar_data":
+        polar_data_i_path = (
+            Path(kite_dir_path) / "polar_data" / f"{profile_name}_polar.csv"
+        )
+        df_polar_data = pd.read_csv(polar_data_i_path, sep=";")
+        # print(f"profile_name: {profile_name} \npolar_data:{df_polar_data.head()}")
+        # print(f' df_polar_data["aoa"].values: { df_polar_data["aoa"].values}')
+        polar_data_i = np.array(
+            [
+                [np.deg2rad(alpha_i) for alpha_i in df_polar_data["aoa"].values],
+                df_polar_data["cl"].values,
+                df_polar_data["cd"].values,
+                df_polar_data["cm"].values,
+            ]
+        )
+        return polar_data_i
+    else:
+        raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
+
+
+def read_surfplan_txt(filepath, airfoil_input_type):
     """
     Read the main characteristics of kite ribs and LE (Leading Edge) tube sections from the .txt file from Surfplan.
 
@@ -17,15 +44,18 @@ def read_surfplan_txt(filepath):
     list of dict: A list of dictionaries, each containing the leading edge (LE) position, trailing edge (TE) position,
                   and airfoil characteristics (tube diameter and camber height) for each rib.
     """
+    kite_dir_path = os.path.dirname(filepath)
     with open(filepath, "r") as file:
         lines = file.readlines()
 
     ribs_data = []  # Output list to store the ribs' data
-    ribs = []       # List to store rib data: [LE position [x,y,z], TE position [x,y,z], Up vector VUP [x,y,z]]
-    wingtip = []    # List to store wingtip  data 
+    ribs = (
+        []
+    )  # List to store rib data: [LE position [x,y,z], TE position [x,y,z], Up vector VUP [x,y,z]]
+    wingtip = []  # List to store wingtip  data
     le_tube = []  # List to store diameters of the LE tube sections
     n_ribs = 0  # Number of ribs
-    n_wingtip_segments = 0 # Number of wingtip segments
+    n_wingtip_segments = 0  # Number of wingtip segments
     n_le_sections = 0  # Number of LE sections
     txt_section = None  # Current section being read ('ribs' or 'le_tube')
 
@@ -57,8 +87,8 @@ def read_surfplan_txt(filepath):
                 te = np.array(values[3:6])  # Trailing edge position
                 vup = np.array(values[6:9])  # Up vector
                 ribs.append([le, te, vup])
-        
-        # Read kite wingtips ribs 
+
+        # Read kite wingtips ribs
         if txt_section == "wingtip":
             if not line:  # Empty line indicates the end of the section
                 txt_section = None
@@ -92,7 +122,13 @@ def read_surfplan_txt(filepath):
                 # le_tube.append([centre, diam])
                 le_tube.append(diameter)
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
-    le_tube_without_wingtips = np.concatenate(([le_tube[0]], le_tube[n_wingtip_segments+1:-n_wingtip_segments-1], [le_tube[-1]]))
+    le_tube_without_wingtips = np.concatenate(
+        (
+            [le_tube[0]],
+            le_tube[n_wingtip_segments + 1 : -n_wingtip_segments - 1],
+            [le_tube[-1]],
+        )
+    )
     for i in range(n_ribs):
         # Rib position
         rib_le = ribs[i][0]
@@ -105,71 +141,88 @@ def read_surfplan_txt(filepath):
         # First case, kite has one central rib
         if n_ribs % 2 == 1:
             # print(1 +abs(k-i))
-            profile_name = f"prof_{1 +abs(-k+i)}.dat"
+            profile_name = f"prof_{1 +abs(-k+i)}"
         # Second case, kite has two central ribs
         else:
             if i < k:
                 # print(k-i)
-                profile_name = f"prof_{k-i}.dat"
+                profile_name = f"prof_{k-i}"
             else:
                 # print(i-k+1)
-                profile_name = f"prof_{i-k+1}.dat"
-        # Extract the directory path
-        profile_directory_path = os.path.dirname(filepath) + "/profiles/"
+                profile_name = f"prof_{i-k+1}"
         # Read camber height from .dat airfoil file
         airfoil = reading_profile_from_airfoil_dat_files(
-            profile_directory_path + profile_name
+            Path(kite_dir_path) / "profiles" / f"{profile_name}.dat"
         )
         camber = airfoil["depth"]
         # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
         # x_camber = airfoil["x_depth"]
         # TE_angle = airfoil["TE_angle"]
+        polar_data_i = read_airfoil_polar_data(
+            airfoil_input_type, kite_dir_path, profile_name
+        )
         ribs_data.append(
             {
                 "LE": rib_le,
                 "TE": rib_te,
                 "d_tube": tube_diameter,
                 "camber": camber,
+                "polar_data": polar_data_i,
                 # "x_camber" : x_camber,
                 # "TE_angle" : TE_angle
             }
         )
-    if len(wingtip) > 0:    #if wingtips segments are described in the export file, insert them in ribs data
-        #Wingtip airfoil is the read from the last profile
+
+    ## ADDING WINGTIPS
+    if (
+        len(wingtip) > 0
+    ):  # if wingtips segments are described in the export file, insert them in ribs data
+        # Wingtip airfoil is the read from the last profile
+        profile_name = f"prof_{(n_ribs + 1) // 2}"
         wingtip_airfoil = reading_profile_from_airfoil_dat_files(
-            os.path.dirname(filepath) + f"/profiles/prof_{(n_ribs +1)//2}.dat"
-            )
-        # Insert wingtips segments ribs 
-        for i in range(n_wingtip_segments-1, -1, -1):
+            Path(kite_dir_path) / "profiles" / f"{profile_name}.dat"
+        )
+
+        # Insert wingtips segments ribs
+        for i in range(n_wingtip_segments - 1, -1, -1):
             wt_le = wingtip[i][0]
             wt_te = wingtip[i][1]
-            tube_diameter = le_tube[i+1] / np.linalg.norm(rib_te - rib_le)
+            tube_diameter = le_tube[i + 1] / np.linalg.norm(rib_te - rib_le)
             camber = wingtip_airfoil["depth"]
             # x_camber = airfoil["x_depth"]
             # TE_angle = airfoil["TE_angle"]
+
+            polar_data_i = read_airfoil_polar_data(
+                airfoil_input_type, kite_dir_path, profile_name
+            )
+
             # Insert right wingtips segments ribs
-            ribs_data.insert(1, 
+            ribs_data.insert(
+                1,
                 {
                     "LE": wt_le,
                     "TE": wt_te,
                     "d_tube": tube_diameter,
                     "camber": camber,
+                    "polar_data": polar_data_i,
                     # "x_camber" : x_camber,
                     # "TE_angle" : TE_angle
-                }
+                },
             )
             # Insert left wingtips segments ribs
-            ribs_data.insert(-1, 
+            ribs_data.insert(
+                -1,
                 {
-                    "LE": np.array([-wt_le[0],wt_le[1],wt_le[2]]),
-                    "TE": np.array([-wt_te[0],wt_te[1],wt_te[2]]),
+                    "LE": np.array([-wt_le[0], wt_le[1], wt_le[2]]),
+                    "TE": np.array([-wt_te[0], wt_te[1], wt_te[2]]),
                     "d_tube": tube_diameter,
                     "camber": camber,
+                    "polar_data": polar_data_i,
                     # "x_camber" : x_camber,
                     # "TE_angle" : TE_angle
-                }        
+                },
             )
-        #Delete wingtip rib that as been replaced by wingtips segment ribs
+        # Delete wingtip rib that as been replaced by wingtips segment ribs
         ribs_data = ribs_data[1:-1]
     return ribs_data
 
