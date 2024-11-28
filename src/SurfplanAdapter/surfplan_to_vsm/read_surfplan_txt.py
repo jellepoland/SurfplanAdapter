@@ -184,8 +184,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         )
 
         # Insert wingtips segments ribs
-        previous_wt_te = wingtip[-1][1]
-        print(previous_wt_te)
+        previous_wt_te = None
         for i in range(n_wingtip_segments - 1, -1, -1):
             wt_te = wingtip[i][1]
             # Condition to not read wingtips segments that have the same TE (resulting in triangular panels)
