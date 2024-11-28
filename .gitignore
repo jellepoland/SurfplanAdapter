@@ -16,9 +16,14 @@
 !data/default_kite/polar_data/
 !data/default_kite/profiles/
 
+!data/TUDELFT_V3_LEI_KITE/
+!data/TUDELFT_V3_LEI_KITE/polar_data/
+!data/TUDELFT_V3_LEI_KITE/profiles/
+
 !processed_data/
 !processed_data/default_kite/
 !processed_data/TUDELFT_V3_LEI_KITE/
+
 
 !results/
 !results/default_kite/

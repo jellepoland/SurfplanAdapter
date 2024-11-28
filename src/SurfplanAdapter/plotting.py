@@ -125,20 +125,16 @@ def plot_profiles(filepath):
 
 
 if __name__ == "__main__":
-    # Find the root directory of the repository
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
-        root_dir = os.path.abspath(os.path.join(root_dir, ".."))
-        if root_dir == "/":
-            raise FileNotFoundError(
-                "Could not find the root directory of the repository."
-            )
+    from SurfplanAdapter.utils import project_dir
+
     # defining paths
     kite_name = "default_kite"
     kite_name = "TUDELFT_V3_LEI_KITE"
-    filepath = Path(root_dir) / "data" / f"{kite_name}" / f"V3D_3d.txt"
+    filepath = (
+        Path(project_dir) / "data" / f"{kite_name}" / f"TUDELFT_V3_LEI_KITE_3d.txt"
+    )
 
-    ribs_data = read_surfplan_txt(filepath)
+    ribs_data = read_surfplan_txt(filepath, airfoil_input_type="lei_arfoil_breukels")
     ribs_coords_surfplan = [[rib["LE"], rib["TE"]] for rib in ribs_data]
     ribs_coords_vsm = [
         [
@@ -150,7 +146,7 @@ if __name__ == "__main__":
     # Plot the data
     plot_ribs(ribs_coords_vsm)
 
-    profile_dir = Path(root_dir) / "data" / kite_name / "profiles"
+    profile_dir = Path(project_dir) / "data" / kite_name / "profiles"
 
     # Ensure the directory exists
     if profile_dir.is_dir():
