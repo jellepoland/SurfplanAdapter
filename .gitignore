@@ -6,8 +6,12 @@
 
 # Explicitly include specific subdirectories
 !data/default_kite/
+!data/default_kite/polar_data/
+!data/default_kite/profiles/
 /data/default_kite/**
 !data/TUDELFT_V3_LEI_KITE/
+!data/TUDELFT_V3_LEI_KITE/polar_data/
+!data/TUDELFT_V3_LEI_KITE/profiles/
 /data/TUDELFT_V3_LEI_KITE/**
 
 !processed_data/default_kite/
