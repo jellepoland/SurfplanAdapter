@@ -59,6 +59,9 @@ def read_surfplan_txt(filepath, airfoil_input_type):
     n_le_sections = 0  # Number of LE sections
     txt_section = None  # Current section being read ('ribs' or 'le_tube')
 
+    strut_id = None  # Current strut id being read
+    strut_id_list = []
+
     for line in lines:
         line = line.strip()
         if line.startswith("3d rib positions"):
@@ -69,6 +72,13 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             continue
         elif line.startswith("LE tube"):
             txt_section = "le_tube"
+            continue
+        elif line.startswith("Strut"):
+            txt_section = "strut"
+            strut_id = line.split()[
+                1
+            ]  # Extract the strut number (e.g., "2" from "Strut 2")
+            strut_id_list.append(int(strut_id) - 1)
             continue
 
         # Read kite ribs and store data in ribs
@@ -121,6 +131,22 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                 diameter = values[3]  # Diameter of the LE tube section
                 # le_tube.append([centre, diam])
                 le_tube.append(diameter)
+
+        # elif txt_section == "strut":
+        #     if not line:  # Empty line indicates the end of the section
+        #         txt_section = None
+        #         continue
+        #     if not any(char.isdigit() for char in line):
+        #         continue  # Skip comment lines
+        #     if line.isdigit():
+        #         n_struts = int(line)  # Number of strut entries
+        #         continue
+        #     values = list(map(float, line.replace(",", ".").split(";")))
+        #     if len(values) == 4:
+        #         center = np.array(values[0:3])  # Strut center position (X, Y, Z)
+        #         diameter = values[3]  # Strut diameter
+        #         struts.append({"center": center, "diameter": diameter})
+
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
         (
@@ -129,6 +155,8 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             [le_tube[-1]],
         )
     )
+
+    is_strut = False
     for i in range(n_ribs):
         # Rib position
         rib_le = ribs[i][0]
@@ -161,6 +189,14 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         polar_data_i = read_airfoil_polar_data(
             airfoil_input_type, kite_dir_path, profile_name
         )
+
+        ## checking if at this rib location there is a strut
+        print(f"i: {i}, strut_id_list: {strut_id_list}")
+        if i in strut_id_list:
+            is_strut = True
+        else:
+            is_strut = False
+
         ribs_data.append(
             {
                 "LE": rib_le,
@@ -168,6 +204,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                 "d_tube": tube_diameter,
                 "camber": camber,
                 "polar_data": polar_data_i,
+                "is_strut": is_strut,
                 # "x_camber" : x_camber,
                 # "TE_angle" : TE_angle
             }
@@ -222,7 +259,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                     # "TE_angle" : TE_angle
                 },
             )
-        # Delete wingtip rib that as been replaced by wingtips segment ribs
+        # Delete wingtip rib that have been replaced by wingtips segment ribs
         ribs_data = ribs_data[1:-1]
     return ribs_data
 

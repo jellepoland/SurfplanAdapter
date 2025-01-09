@@ -101,7 +101,10 @@ def generate_VSM_input(
         LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
         if airfoil_input_type == "lei_airfoil_breukels":
-            polar_data = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
+            polar_data = [
+                "lei_airfoil_breukels",
+                [rib["d_tube"], rib["camber"], rib["is_strut"]],
+            ]
         elif airfoil_input_type == "polar_data":
             polar_data = ["polar_data", rib["polar_data"]]
         else:
@@ -109,7 +112,13 @@ def generate_VSM_input(
                 f"current airfoil_input_type: {airfoil_input_type} is not recognized, change string value"
             )
         wing.add_section(LE, TE, polar_data)
-        row_input_list.append([LE, TE, polar_data])
+        row_input_list.append(
+            [
+                LE,
+                TE,
+                polar_data,
+            ]
+        )
         # wing.add_section(
         #     transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
         #     transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
@@ -131,7 +140,17 @@ def generate_VSM_input(
             writer = csv.writer(f)
             # Write the header
             writer.writerow(
-                ["LE_x", "LE_y", "LE_z", "TE_x", "TE_y", "TE_z", "d_tube", "camber"]
+                [
+                    "LE_x",
+                    "LE_y",
+                    "LE_z",
+                    "TE_x",
+                    "TE_y",
+                    "TE_z",
+                    "d_tube",
+                    "camber",
+                    "is_strut",
+                ]
             )
             # Write the data for each rib
             for row in row_input_list:
@@ -145,6 +164,7 @@ def generate_VSM_input(
                         row[1][2],
                         row[2][1][0],
                         row[2][1][1],
+                        row[2][1][2],
                     ]
                 )
 
