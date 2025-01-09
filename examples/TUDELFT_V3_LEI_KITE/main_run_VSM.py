@@ -18,12 +18,13 @@ kite_name = "TUDELFT_V3_LEI_KITE"
 # %% Running VSM
 
 ## Using breukels model without saving the geometry
+csv_save_file = Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv"
 wing_aero_breukels = generate_VSM_input(
     kite_name,
     n_panels=30,
     spanwise_panel_distribution="linear",
-    # is_save_geometry=True,
-    # csv_file_path=Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv",
+    is_save_geometry=True,
+    csv_file_path=csv_save_file,
 )
 
 ## Using polar_data input, requires one to change the "airfoil_input_type" entry
@@ -33,7 +34,7 @@ wing_aero_breukels = generate_VSM_input(
 wing_aero_polar = generate_VSM_input(
     kite_name,
     n_panels=30,
-    spanwise_panel_distribution="linear",
+    spanwise_panel_distribution="unchanged",
     airfoil_input_type="polar_data",
     is_save_geometry=False,
     # csv_file_path=Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv",
@@ -49,6 +50,7 @@ interactive_plot(
     is_with_aerodynamic_details=True,
 )
 
+breakpoint()
 # 2. Set the flow conditions
 aoa = np.deg2rad(10)
 sideslip = 0
