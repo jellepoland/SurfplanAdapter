@@ -8,6 +8,7 @@ from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
 from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
+from SurfplanAdapter.plotting import plot_and_save_all_profiles
 from VSM.WingGeometry import Wing
 from VSM.WingAerodynamics import WingAerodynamics
 from VSM.plotting import plot_geometry
@@ -89,20 +90,27 @@ def generate_VSM_input(
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
     ribs_data = read_surfplan_txt(path_surfplan_file, airfoil_input_type)
+    # Saving all the airfoil plots
+    data_folder = Path(path_surfplan_file).parent
+    profile_folder = data_folder.joinpath("profiles")
+    if data_folder.joinpath("profiles").exists():
+        plot_and_save_all_profiles(profile_folder)
     # Sorting ribs data
     ribs_data = sort_ribs_by_proximity(ribs_data)
 
     # Create wing geometry
     wing = Wing(n_panels, spanwise_panel_distribution)
     row_input_list = []
+    is_strut_list = []
     for rib in ribs_data:
         LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
         if airfoil_input_type == "lei_airfoil_breukels":
             polar_data = [
                 "lei_airfoil_breukels",
-                [rib["d_tube"], rib["camber"], rib["is_strut"]],
+                [rib["d_tube"], rib["camber"]],
             ]
+            is_strut_list.append(rib["is_strut"])
             # polar_data = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
         elif airfoil_input_type == "polar_data":
             polar_data = ["polar_data", rib["polar_data"]]
@@ -152,7 +160,7 @@ def generate_VSM_input(
                 ]
             )
             # Write the data for each rib
-            for row in row_input_list:
+            for row, is_strut in zip(row_input_list, is_strut_list):
                 writer.writerow(
                     [
                         row[0][0],
@@ -163,7 +171,7 @@ def generate_VSM_input(
                         row[1][2],
                         row[2][1][0],
                         row[2][1][1],
-                        row[2][1][2],
+                        is_strut,
                     ]
                 )
 
