@@ -50,7 +50,6 @@ interactive_plot(
     is_with_aerodynamic_details=True,
 )
 
-breakpoint()
 # 2. Set the flow conditions
 aoa = np.deg2rad(10)
 sideslip = 0
