@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import csv
 
+from SurfplanAdapter.utils import PROJECT_DIR
 from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
 from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
-from SurfplanAdapter.utils import project_dir
 from VSM.WingGeometry import Wing
 from VSM.WingAerodynamics import WingAerodynamics
 from VSM.plotting import plot_geometry
@@ -68,12 +68,12 @@ def sort_ribs_by_proximity(ribs_data):
 
 
 def generate_VSM_input(
-    kite_name: str,
+    path_surfplan_file: str,
     n_panels: int,
     spanwise_panel_distribution: str = "linear",
     airfoil_input_type: str = "lei_airfoil_breukels",
     is_save_geometry=False,
-    csv_file_path=None,
+    path_to_save_geometry=None,
 ):
     """
     Generate Input for the Vortex Step Method
@@ -88,11 +88,7 @@ def generate_VSM_input(
     Returns:
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
-    filepath = Path(project_dir) / "data" / f"{kite_name}" / f"{kite_name}_3d.txt"
-    filepath = "/home/jellepoland/ownCloud/phd/code/kitepower/confidential/v9_files_for_surfplan_adapter_16_01_2025/v9_files_for_surfplan_adapter"
-    filepath = Path(filepath) / "V9.60J-Inertia.txt"
-
-    ribs_data = read_surfplan_txt(filepath, airfoil_input_type)
+    ribs_data = read_surfplan_txt(path_surfplan_file, airfoil_input_type)
     # Sorting ribs data
     ribs_data = sort_ribs_by_proximity(ribs_data)
 
@@ -134,12 +130,12 @@ def generate_VSM_input(
             raise ValueError(
                 f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
             )
-        if csv_file_path is None:
+        if path_to_save_geometry is None:
             raise ValueError("You must provide a csv_file_path.")
-        if not os.path.exists(csv_file_path):
-            os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+        if not os.path.exists(path_to_save_geometry):
+            os.makedirs(os.path.dirname(path_to_save_geometry), exist_ok=True)
 
-        with open(csv_file_path, "w", newline="") as f:
+        with open(path_to_save_geometry, "w", newline="") as f:
             writer = csv.writer(f)
             # Write the header
             writer.writerow(
@@ -176,17 +172,22 @@ def generate_VSM_input(
 
 if __name__ == "__main__":
 
-    kite_name = "TUDELFT_V3_LEI_KITE"
-    # defining paths
+    data_folder_name = "TUDELFT_V3_LEI_KITE"
+    kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
+    path_surfplan_file = (
+        Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
+    )
+    path_to_save_geometry = (
+        Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}" / "geometry.csv"
+    )
+
     wing_aero = generate_VSM_input(
-        kite_name,
-        n_panels=50,
-        spanwise_panel_distribution="linear",
+        path_surfplan_file=path_surfplan_file,
+        n_panels=30,
+        spanwise_panel_distribution="unchanged",
+        airfoil_input_type="lei_airfoil_breukels",
         is_save_geometry=True,
-        csv_file_path=Path(project_dir)
-        / "processed_data"
-        / "TUDELFT_V3_LEI_KITE"
-        / "geometry.csv",
+        path_to_save_geometry=path_to_save_geometry,
     )
 
     # setting arbitrary flow conditions

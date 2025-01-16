@@ -18,8 +18,6 @@ def read_airfoil_polar_data(
             Path(kite_dir_path) / "polar_data" / f"{profile_name}_polar.csv"
         )
         df_polar_data = pd.read_csv(polar_data_i_path, sep=";")
-        # print(f"profile_name: {profile_name} \npolar_data:{df_polar_data.head()}")
-        # print(f' df_polar_data["aoa"].values: { df_polar_data["aoa"].values}')
         polar_data_i = np.array(
             [
                 [np.deg2rad(alpha_i) for alpha_i in df_polar_data["aoa"].values],
@@ -31,6 +29,22 @@ def read_airfoil_polar_data(
         return polar_data_i
     else:
         raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
+
+
+def line_parser(line):
+    """
+    Parse a line from the .txt file from Surfplan.
+
+    Parameters:
+        line (str): The line to parse.
+
+    Returns:
+        list: A list of floats containing the parsed values.
+    """
+    if ";" in line:
+        return list(map(float, line.replace(",", ".").split(";")))
+    else:
+        return list(map(float, line.split(",")))
 
 
 def read_surfplan_txt(filepath, airfoil_input_type):
@@ -91,8 +105,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_ribs = int(line)
                 continue
-            # values = list(map(float, line.replace(",", ".").split(".")))
-            values = list(map(float, line.split(",")))
+            values = line_parser(line)
             if len(values) == 9:
                 le = np.array(values[0:3])  # Leading edge position
                 te = np.array(values[3:6])  # Trailing edge position
@@ -109,8 +122,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_wingtip_segments = int(line)
                 continue
-            # values = list(map(float, line.replace(",", ".").split(".")))
-            values = list(map(float, line.split(",")))
+            values = line_parser(line)
             if len(values) == 9:
                 le = np.array(values[0:3])  # Leading edge position
                 te = np.array(values[3:6])  # Trailing edge position
@@ -119,7 +131,6 @@ def read_surfplan_txt(filepath, airfoil_input_type):
 
         # Read Kite LE tube and store data in le_tube
         if txt_section == "le_tube":
-            # print(f"le_tube line: {line}")
             if not line:  # Empty line indicates the end of the section
                 txt_section = None
                 continue
@@ -128,16 +139,10 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_le_sections = int(line)
                 continue
-            # print(f"line: {line}")
-            # values = list(map(float, line.replace(",", ".").split(".")))
-            values = list(map(float, line.split(",")))
-            # print(f"values: {values}")
+            values = line_parser(line)
             if len(values) == 4:
-                # centre = np.array(values[0:3])  #centre position [x,y,y] of the LE tube section
                 diameter = values[3]  # Diameter of the LE tube section
-                # le_tube.append([centre, diam])
                 le_tube.append(diameter)
-                # print(f"le_tube: {le_tube}")
 
         # elif txt_section == "strut":
         #     if not line:  # Empty line indicates the end of the section
@@ -154,8 +159,6 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         #         diameter = values[3]  # Strut diameter
         #         struts.append({"center": center, "diameter": diameter})
 
-    # print(f"le_tube: {le_tube}")
-    # breakpoint()
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
         (
@@ -177,15 +180,12 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         k = n_ribs // 2
         # First case, kite has one central rib
         if n_ribs % 2 == 1:
-            # print(1 +abs(k-i))
             profile_name = f"prof_{1 +abs(-k+i)}"
         # Second case, kite has two central ribs
         else:
             if i < k:
-                # print(k-i)
                 profile_name = f"prof_{k-i}"
             else:
-                # print(i-k+1)
                 profile_name = f"prof_{i-k+1}"
         # Read camber height from .dat airfoil file
         airfoil = reading_profile_from_airfoil_dat_files(
@@ -193,14 +193,11 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         )
         camber = airfoil["depth"]
         # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
-        # x_camber = airfoil["x_depth"]
-        # TE_angle = airfoil["TE_angle"]
         polar_data_i = read_airfoil_polar_data(
             airfoil_input_type, kite_dir_path, profile_name
         )
 
         ## checking if at this rib location there is a strut
-        print(f"i: {i}, strut_id_list: {strut_id_list}")
         if i in strut_id_list:
             is_strut = True
         else:
@@ -281,11 +278,9 @@ def read_surfplan_txt(filepath, airfoil_input_type):
 
 
 if __name__ == "__main__":
-    from SurfplanAdapter.utils import project_dir
+    from SurfplanAdapter.utils import PROJECT_DIR
 
-    filepath = Path(project_dir) / "data" / "default_kite" / "default_kite_3d.txt"
+    filepath = Path(PROJECT_DIR) / "data" / "default_kite" / "default_kite_3d.txt"
     ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
     for rib in ribs_data:
         print(rib)
-        # print("\n")
-        # print(rib["d_tube"])

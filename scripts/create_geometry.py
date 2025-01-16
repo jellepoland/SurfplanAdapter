@@ -4,7 +4,7 @@ from pathlib import Path
 from SurfplanAdapter.surfplan_to_vsm.generate_vsm_input import (
     generate_VSM_input,
 )
-from SurfplanAdapter.utils import PROJECT_DIR
+from SurfplanAdapter.utils import project_dir
 from SurfplanAdapter.logging_config import *
 from VSM.Solver import Solver
 import VSM.plotting as plotting
@@ -14,23 +14,33 @@ from VSM.interactive import interactive_plot
 # should be equal to folder name, e.g "default_kite/"
 # should also be "{kite_name}_3d".txt, e.g "default_kite_3d.txt"
 kite_name = "TUDELFT_V3_LEI_KITE"
-path_surfplan_file = Path(PROJECT_DIR) / "data" / f"{kite_name}" / f"{kite_name}_3d.txt"
-path_surfplan_file = "/home/jellepoland/ownCloud/phd/code/kitepower/confidential/v9_files_for_surfplan_adapter_16_01_2025/v9_files_for_surfplan_adapter/V9.60J-Inertia.txt"
-path_to_save_geometry = (
-    Path(PROJECT_DIR) / "processed_data" / f"{kite_name}" / "geometry.csv"
-)
 
-## Using polar_data input, requires one to change the "airfoil_input_type" entry to "polar_data"
+# %% Running VSM
+
+## Using breukels model without saving the geometry
+csv_save_file = Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv"
+
+
+# wing_aero_breukels = generate_VSM_input(
+#     kite_name,
+#     n_panels=30,
+#     spanwise_panel_distribution="linear",
+#     is_save_geometry=False,
+#     csv_file_path=csv_save_file,
+# )
+
+## Using polar_data input, requires one to change the "airfoil_input_type" entry
 # A polar data folder should be created and placed inside the same kite_name folder in data/
 # Polar data must be provided for all profiles (prof_1.dat,prof_2.dat, ..)
 # The polar dat should be named prof_1_polar.csv, prof_2_polar.csv etc.
+kite_name = "V9"
 wing_aero_polar = generate_VSM_input(
     kite_name,
     n_panels=30,
     spanwise_panel_distribution="unchanged",
     airfoil_input_type="lei_airfoil_breukels",
     is_save_geometry=True,
-    csv_file_path=Path(PROJECT_DIR)
+    csv_file_path=Path(project_dir)
     / "processed_data"
     / f"{kite_name}"
     / "geometry.csv",
@@ -57,7 +67,7 @@ wing_aero_polar.va = (
 )
 
 # ### Plotting the wing
-save_path = Path(PROJECT_DIR) / "examples" / f"{kite_name}" / "results"
+save_path = Path(project_dir) / "examples" / f"{kite_name}" / "results"
 # plotting.plot_geometry(
 #     wing_aero_polar,
 #     title="geometry",
