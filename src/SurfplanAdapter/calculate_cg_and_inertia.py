@@ -490,11 +490,14 @@ def main(
 
 
 if __name__ == "__main__":
+    # file_path = Path(
+    # "/home/jellepoland/ownCloud/phd/code/SurfplanAdapter/processed_data/TUDELFT_V3_LEI_KITE/geometry.csv"
+    # )
     file_path = Path(
-        "/home/jellepoland/ownCloud/phd/code/SurfplanAdapter/processed_data/TUDELFT_V3_LEI_KITE/geometry.csv"
+        "/home/jellepoland/ownCloud/phd/code/SurfplanAdapter/processed_data/V9/geometry.csv"
     )
     total_wing_mass = 10.0
-    canopy_kg_p_sqm = 0.2
+    canopy_kg_p_sqm = 0.05
     le_to_strut_mass_ratio = 0.7
     sensor_mass = 0.5
     is_show_plot = True

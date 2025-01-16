@@ -89,6 +89,8 @@ def generate_VSM_input(
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
     filepath = Path(project_dir) / "data" / f"{kite_name}" / f"{kite_name}_3d.txt"
+    filepath = "/home/jellepoland/ownCloud/phd/code/kitepower/confidential/v9_files_for_surfplan_adapter_16_01_2025/v9_files_for_surfplan_adapter"
+    filepath = Path(filepath) / "V9.60J-Inertia.txt"
 
     ribs_data = read_surfplan_txt(filepath, airfoil_input_type)
     # Sorting ribs data
@@ -105,6 +107,7 @@ def generate_VSM_input(
                 "lei_airfoil_breukels",
                 [rib["d_tube"], rib["camber"], rib["is_strut"]],
             ]
+            # polar_data = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
         elif airfoil_input_type == "polar_data":
             polar_data = ["polar_data", rib["polar_data"]]
         else:
