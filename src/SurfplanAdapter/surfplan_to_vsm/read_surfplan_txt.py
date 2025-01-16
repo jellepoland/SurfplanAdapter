@@ -91,7 +91,8 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_ribs = int(line)
                 continue
-            values = list(map(float, line.replace(",", ".").split(";")))
+            # values = list(map(float, line.replace(",", ".").split(".")))
+            values = list(map(float, line.split(",")))
             if len(values) == 9:
                 le = np.array(values[0:3])  # Leading edge position
                 te = np.array(values[3:6])  # Trailing edge position
@@ -108,7 +109,8 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_wingtip_segments = int(line)
                 continue
-            values = list(map(float, line.replace(",", ".").split(";")))
+            # values = list(map(float, line.replace(",", ".").split(".")))
+            values = list(map(float, line.split(",")))
             if len(values) == 9:
                 le = np.array(values[0:3])  # Leading edge position
                 te = np.array(values[3:6])  # Trailing edge position
@@ -116,7 +118,8 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                 wingtip.append([le, te, vup])
 
         # Read Kite LE tube and store data in le_tube
-        elif txt_section == "le_tube":
+        if txt_section == "le_tube":
+            # print(f"le_tube line: {line}")
             if not line:  # Empty line indicates the end of the section
                 txt_section = None
                 continue
@@ -125,12 +128,16 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             if line.isdigit():
                 n_le_sections = int(line)
                 continue
-            values = list(map(float, line.replace(",", ".").split(";")))
+            # print(f"line: {line}")
+            # values = list(map(float, line.replace(",", ".").split(".")))
+            values = list(map(float, line.split(",")))
+            # print(f"values: {values}")
             if len(values) == 4:
                 # centre = np.array(values[0:3])  #centre position [x,y,y] of the LE tube section
                 diameter = values[3]  # Diameter of the LE tube section
                 # le_tube.append([centre, diam])
                 le_tube.append(diameter)
+                # print(f"le_tube: {le_tube}")
 
         # elif txt_section == "strut":
         #     if not line:  # Empty line indicates the end of the section
@@ -147,6 +154,8 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         #         diameter = values[3]  # Strut diameter
         #         struts.append({"center": center, "diameter": diameter})
 
+    # print(f"le_tube: {le_tube}")
+    # breakpoint()
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
         (
@@ -247,6 +256,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                     "d_tube": tube_diameter,
                     "camber": camber,
                     "polar_data": polar_data_i,
+                    "is_strut": False,
                     # "x_camber" : x_camber,
                     # "TE_angle" : TE_angle
                 },
@@ -260,6 +270,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                     "d_tube": tube_diameter,
                     "camber": camber,
                     "polar_data": polar_data_i,
+                    "is_strut": False,
                     # "x_camber" : x_camber,
                     # "TE_angle" : TE_angle
                 },

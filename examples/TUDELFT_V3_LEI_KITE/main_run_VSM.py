@@ -19,26 +19,33 @@ kite_name = "TUDELFT_V3_LEI_KITE"
 
 ## Using breukels model without saving the geometry
 csv_save_file = Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv"
-wing_aero_breukels = generate_VSM_input(
-    kite_name,
-    n_panels=30,
-    spanwise_panel_distribution="linear",
-    is_save_geometry=True,
-    csv_file_path=csv_save_file,
-)
+
+
+# wing_aero_breukels = generate_VSM_input(
+#     kite_name,
+#     n_panels=30,
+#     spanwise_panel_distribution="linear",
+#     is_save_geometry=False,
+#     csv_file_path=csv_save_file,
+# )
 
 ## Using polar_data input, requires one to change the "airfoil_input_type" entry
 # A polar data folder should be created and placed inside the same kite_name folder in data/
 # Polar data must be provided for all profiles (prof_1.dat,prof_2.dat, ..)
 # The polar dat should be named prof_1_polar.csv, prof_2_polar.csv etc.
+kite_name = "V9"
 wing_aero_polar = generate_VSM_input(
     kite_name,
     n_panels=30,
     spanwise_panel_distribution="unchanged",
-    airfoil_input_type="polar_data",
-    is_save_geometry=False,
-    # csv_file_path=Path(project_dir) / "processed_data" / f"{kite_name}" / "geometry.csv",
+    airfoil_input_type="lei_airfoil_breukels",
+    is_save_geometry=True,
+    csv_file_path=Path(project_dir)
+    / "processed_data"
+    / f"{kite_name}"
+    / "geometry.csv",
 )
+breakpoint()
 
 # interactive plot
 interactive_plot(
