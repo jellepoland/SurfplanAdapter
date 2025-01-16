@@ -72,17 +72,11 @@ def reading_profile_from_airfoil_dat_files(filepath):
 
 
 if __name__ == "__main__":
-    # Find the root directory of the repository
-    root_dir = os.path.abspath(os.path.dirname(__file__))
-    while not os.path.isfile(os.path.join(root_dir, ".gitignore")):
-        root_dir = os.path.abspath(os.path.join(root_dir, ".."))
-        if root_dir == "/":
-            raise FileNotFoundError(
-                "Could not find the root directory of the repository."
-            )
+    from SurfplanAdapter.utils import PROJECT_DIR
+
     # defining paths
     filepath = (
-        Path(root_dir) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles" / "prof_1.dat"
+        Path(PROJECT_DIR) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles" / "prof_1.dat"
     )
     # Example usage:
     profile = reading_profile_from_airfoil_dat_files(filepath)
@@ -90,11 +84,11 @@ if __name__ == "__main__":
     depth = profile["depth"]
     x_depth = profile["x_depth"]
     TE_angle = profile["TE_angle"]
-    print(f"Profile Name: {profile_name}")
-    print(f"Highest Point X Coordinate (x_depth): {x_depth} m")
-    print(f"Highest Point Y Coordinate (depth) CAMBER: {depth} m")
-    print(f"TE angle: {TE_angle:.2f}°")
-    print(f"profile:{profile}")
+    # print(f"Profile Name: {profile_name}")
+    # print(f"Highest Point X Coordinate (x_depth): {x_depth} m")
+    # print(f"Highest Point Y Coordinate (depth) CAMBER: {depth} m")
+    # print(f"TE angle: {TE_angle:.2f}°")
+    # print(f"profile:{profile}")
 
     points = profile["points"]
     x = [point[0] for point in points]
