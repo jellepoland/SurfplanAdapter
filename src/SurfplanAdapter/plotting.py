@@ -58,7 +58,7 @@ def plot_ribs(ribs_coord):
 # Plot the profile described in the input file and display caracteristics
 # Input :
 #   filepath : str
-def plot_profiles(filepath):
+def plot_profiles(filepath, profile_folder):
     """
     Plot the profile described in the input file and display its characteristics.
 
@@ -95,17 +95,17 @@ def plot_profiles(filepath):
     plt.plot(x_points, y_points, marker="", linestyle="-", color="b")
 
     # Highlight the highest point in red
-    plt.scatter(
-        [x_depth / 100], [depth / 100], color="r", zorder=5, label="Highest Point"
-    )
+    # plt.scatter(
+    # [x_depth / 100], [depth / 100], color="r", zorder=5, label="Highest Point"
+    # )
 
     # Annotate the highest point with its coordinates
-    plt.annotate(
-        f"({x_depth/100}, {depth/100})",
-        xy=(x_depth / 100, depth / 100),
-        xytext=(x_depth / 100, depth / 100 + 0.05),
-        arrowprops=dict(facecolor="black", arrowstyle="->"),
-    )
+    # plt.annotate(
+    #     f"({x_depth/100:.2f}, {depth/100:.2f})",
+    #     xy=(x_depth / 100, depth / 100),
+    #     xytext=(x_depth / 100, depth / 100 + 0.05),
+    #     arrowprops=dict(facecolor="black", arrowstyle="->"),
+    # )
 
     # Set plot labels and title
     plt.xlabel("X Coordinate")
@@ -121,20 +121,30 @@ def plot_profiles(filepath):
     plt.gca().set_aspect("equal", adjustable="box")  # Set equal aspect ratio
 
     # Display the plot
-    plt.show()
+    plt.savefig(Path(profile_folder) / f"{filepath.stem}.png")
+
+
+def plot_and_save_all_profiles(profile_folder):
+    # Ensure the directory exists
+    if profile_folder.is_dir():
+        for file_name in profile_folder.iterdir():
+            # Check if the file name starts with "prof" and ends with ".dat"
+            if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
+                plot_profiles(file_name, profile_folder)
+    else:
+        print(f"Directory {profile_folder} does not exist.")
 
 
 if __name__ == "__main__":
-    from SurfplanAdapter.utils import project_dir
+    from SurfplanAdapter.utils import PROJECT_DIR
 
-    # defining paths
-    kite_name = "default_kite"
-    kite_name = "TUDELFT_V3_LEI_KITE"
     filepath = (
-        Path(project_dir) / "data" / f"{kite_name}" / f"TUDELFT_V3_LEI_KITE_3d.txt"
+        Path(PROJECT_DIR)
+        / "data"
+        / "TUDELFT_V3_LEI_KITE"
+        / "TUDELFT_V3_LEI_KITE_3d.txt"
     )
-
-    ribs_data = read_surfplan_txt(filepath, airfoil_input_type="lei_arfoil_breukels")
+    ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
     ribs_coords_surfplan = [[rib["LE"], rib["TE"]] for rib in ribs_data]
     ribs_coords_vsm = [
         [
@@ -145,14 +155,5 @@ if __name__ == "__main__":
     ]
     # Plot the data
     plot_ribs(ribs_coords_vsm)
-
-    profile_dir = Path(project_dir) / "data" / kite_name / "profiles"
-
-    # Ensure the directory exists
-    if profile_dir.is_dir():
-        for file_name in profile_dir.iterdir():
-            # Check if the file name starts with "prof" and ends with ".dat"
-            if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
-                plot_profiles(file_name)
-    else:
-        print(f"Directory {profile_dir} does not exist.")
+    profile_folder = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles"
+    plot_and_save_all_profiles(profile_folder)
