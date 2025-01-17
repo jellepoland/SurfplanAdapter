@@ -13,6 +13,7 @@ from VSM.interactive import interactive_plot
 ## User Inputs
 data_folder_name = "TUDELFT_V3_LEI_KITE"
 kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
+reference_point_for_moment_calculation = [0, 0, 0]
 
 ## Creating Paths
 path_surfplan_file = (
@@ -66,8 +67,9 @@ wing_aero_breukels.va = (
 ### Solve the aerodynamics
 # cl,cd,cs coefficients are flipped to "normal ref frame"
 # x (+) downstream, y(+) left and z(+) upwards reference frame
-solver = Solver(aerodynamic_model_type="VSM")
-
+solver = Solver(
+    aerodynamic_model_type="VSM", reference_point=reference_point_for_moment_calculation
+)
 
 ### plotting distributions
 result = solver.solve(wing_aero_breukels)
