@@ -216,64 +216,100 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             }
         )
 
-    ## ADDING WINGTIPS
-    if (
-        len(wingtip) > 0
-    ):  # if wingtips segments are described in the export file, insert them in ribs data
-        # Wingtip airfoil is the read from the last profile
-        profile_name = f"prof_{(n_ribs + 1) // 2}"
-        wingtip_airfoil = reading_profile_from_airfoil_dat_files(
-            Path(kite_dir_path) / "profiles" / f"{profile_name}.dat"
+    ## ADDING WINGTIPS, if described in surfplan txt export file
+    if len(wingtip) > 0:
+        ## Preparing LE, TE from the wingtip list
+        wingtip = wingtip[::-1]
+        le_list = [wingtip[i][0] for i in range(n_wingtip_segments)]
+        te_list = [wingtip[i][1] for i in range(n_wingtip_segments)]
+        chord_len_list = [
+            np.linalg.norm(te_i - le_i) for le_i, te_i in zip(le_list, te_list)
+        ]
+
+        ## profile of most outer rib thats not the wingtip
+        n_profiles = int(n_ribs // 2)
+        profile_outer_rib = reading_profile_from_airfoil_dat_files(
+            Path(kite_dir_path) / "profiles" / f"prof_{int(n_profiles-1)}.dat"
         )
-
-        # Insert wingtips segments ribs
-        previous_wt_te = None
-        for i in range(n_wingtip_segments - 1, -1, -1):
-            wt_te = wingtip[i][1]
-            # Condition to not read wingtips segments that have the same TE (resulting in triangular panels)
-            if np.array_equal(wt_te, previous_wt_te):
-                continue
-            previous_wt_te = wt_te
-            wt_le = wingtip[i][0]
-            tube_diameter = le_tube[i + 1] / np.linalg.norm(rib_te - rib_le)
-            camber = wingtip_airfoil["depth"]
-            # x_camber = airfoil["x_depth"]
-            # TE_angle = airfoil["TE_angle"]
-
-            polar_data_i = read_airfoil_polar_data(
-                airfoil_input_type, kite_dir_path, profile_name
+        profile_tip = reading_profile_from_airfoil_dat_files(
+            Path(kite_dir_path) / "profiles" / f"prof_{n_profiles}.dat"
+        )
+        ## Assuming camber & tube_diam decrease linearly
+        camber_outer_rib = profile_outer_rib["depth"]
+        camber_tip = profile_tip["depth"]
+        camber_list = np.linspace(camber_outer_rib, camber_tip, n_wingtip_segments)
+        tube_diam_outer_rib = le_tube[-2]
+        tube_diam_tip = le_tube[-1]
+        tube_diam_list = np.linspace(
+            tube_diam_outer_rib, tube_diam_tip, n_wingtip_segments
+        ) / np.array(chord_len_list)
+        ## Assuming polar_data decreases linearly
+        if airfoil_input_type == "polar_data":
+            polar_data_outer_rib = read_airfoil_polar_data(
+                airfoil_input_type, kite_dir_path, f"prof_{int(n_profiles-1)}"
             )
+            polar_data_tip = read_airfoil_polar_data(
+                airfoil_input_type, kite_dir_path, f"prof_{n_profiles}"
+            )
+            polar_data_list = []
+            # Perform linear interpolation for each segment
+            for alpha in np.linspace(0, 1, n_wingtip_segments):
+                interpolated_data = (
+                    1 - alpha
+                ) * polar_data_outer_rib + alpha * polar_data_tip
+                polar_data_list.append(interpolated_data)
+        elif airfoil_input_type == "lei_airfoil_breukels":
+            polar_data_list = [None for i in range(n_wingtip_segments)]
+        else:
+            raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
 
-            # Insert right wingtips segments ribs
-            ribs_data.insert(
-                1,
+        ## Make lists for all ribs from left wing tip to right wing tip
+        left_wing_tip_additions = []
+        for i, (le_i, te_i, d_tube_i, camber_i, polar_data_i) in enumerate(
+            zip(
+                le_list[::-1],
+                te_list[::-1],
+                tube_diam_list[::-1],
+                camber_list[::-1],
+                polar_data_list[::-1],
+            )
+        ):
+
+            left_wing_tip_additions.append(
                 {
-                    "LE": wt_le,
-                    "TE": wt_te,
-                    "d_tube": tube_diameter,
-                    "camber": camber,
+                    "LE": le_i,
+                    "TE": te_i,
+                    "d_tube": d_tube_i,
+                    "camber": camber_i,
                     "polar_data": polar_data_i,
                     "is_strut": False,
-                    # "x_camber" : x_camber,
-                    # "TE_angle" : TE_angle
-                },
+                }
             )
-            # Insert left wingtips segments ribs
-            ribs_data.insert(
-                -1,
+        # excluding the tips as the LEs are wrong
+        middle_data_non_wing_tip = ribs_data[1:-1]
+        right_wing_tip_additions = []
+        for i, (le_i, te_i, d_tube_i, camber_i, polar_data_i) in enumerate(
+            zip(le_list, te_list, tube_diam_list, camber_list, polar_data_list)
+        ):
+
+            right_wing_tip_additions.append(
                 {
-                    "LE": np.array([-wt_le[0], wt_le[1], wt_le[2]]),
-                    "TE": np.array([-wt_te[0], wt_te[1], wt_te[2]]),
-                    "d_tube": tube_diameter,
-                    "camber": camber,
+                    "LE": np.array([-le_i[0], le_i[1], le_i[2]]),
+                    "TE": np.array([-te_i[0], te_i[1], te_i[2]]),
+                    "d_tube": d_tube_i,
+                    "camber": camber_i,
                     "polar_data": polar_data_i,
                     "is_strut": False,
-                    # "x_camber" : x_camber,
-                    # "TE_angle" : TE_angle
-                },
+                }
             )
-        # Delete wingtip rib that have been replaced by wingtips segment ribs
-        ribs_data = ribs_data[1:-1]
+        ## concetanating the ribs data
+        ribs_data = np.concatenate(
+            [
+                left_wing_tip_additions,
+                middle_data_non_wing_tip,
+                right_wing_tip_additions,
+            ]
+        )
     return ribs_data
 
 
