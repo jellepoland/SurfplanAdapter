@@ -111,7 +111,6 @@ def generate_VSM_input(
                 [rib["d_tube"], rib["camber"]],
             ]
             is_strut_list.append(rib["is_strut"])
-            # polar_data = ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]]
         elif airfoil_input_type == "polar_data":
             polar_data = ["polar_data", rib["polar_data"]]
         else:
@@ -126,11 +125,6 @@ def generate_VSM_input(
                 polar_data,
             ]
         )
-        # wing.add_section(
-        #     transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
-        #     transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
-        #     ["lei_airfoil_breukels", [rib["d_tube"], rib["camber"]]],
-        # )
 
     # Save wing geometry in a csv file
     if is_save_geometry:

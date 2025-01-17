@@ -11,8 +11,8 @@ import VSM.plotting as plotting
 from VSM.interactive import interactive_plot
 
 ## User Inputs
-data_folder_name = "v9"
-kite_file_name = "V9.60J-Inertia"
+data_folder_name = "TUDELFT_V3_LEI_KITE"
+kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
 
 ## Creating Paths
 path_surfplan_file = (
@@ -26,19 +26,28 @@ path_to_save_geometry = (
 # A polar data folder should be created and placed inside the same kite_name folder in data/
 # Polar data must be provided for all profiles (prof_1.dat,prof_2.dat, ..)
 # The polar dat should be named prof_1_polar.csv, prof_2_polar.csv etc.
+### spanwise_panel_distribution (str): Spanwise panel distribution type, options:
+#  - "linear": Linear distribution
+#  - "cosine": Cosine distribution
+#  - "cosine_van_Garrel": Cosine distribution based on van Garrel method
+#  - "split_provided": Split the provided sections into the desired number of panels
+#  - "unchanged": Keep the provided sections unchanged
+### airfoil_input_type (str): Airfoil input type, options:
+#  - "lei_airfoil_breukels": LEI airfoil with Breukels method
+#  - "polar_data": Polar data input, must be provided in the folder "polar_data" in csv form
 wing_aero_breukels = generate_VSM_input(
     path_surfplan_file=path_surfplan_file,
-    n_panels=30,
-    spanwise_panel_distribution="unchanged",
+    n_panels=100,
+    spanwise_panel_distribution="linear",
     airfoil_input_type="lei_airfoil_breukels",
     is_save_geometry=True,
     path_to_save_geometry=path_to_save_geometry,
 )
 
-# interactive plot
+## interactive plot
 interactive_plot(
     wing_aero_breukels,
-    vel=3.15,
+    vel=10,
     angle_of_attack=6.75,
     side_slip=0,
     yaw_rate=0,
@@ -46,9 +55,9 @@ interactive_plot(
 )
 
 # 2. Set the flow conditions
-aoa = np.deg2rad(10)
+aoa = np.deg2rad(6.75)
 sideslip = 0
-Umag = 20
+Umag = 10
 wing_aero_breukels.va = (
     np.array([np.cos(aoa) * np.cos(sideslip), np.sin(sideslip), np.sin(aoa)]) * Umag,
     0,
@@ -75,21 +84,38 @@ plotting.plot_distribution(
     is_show=True,
 )
 
-### plotting polar
-plotting.plot_polars(
-    solver_list=[solver],
-    wing_aero_list=[wing_aero_breukels],
-    label_list=["Polar"],
-    literature_path_list=[],
-    angle_range=np.linspace(0, 20, 20),
-    angle_type="angle_of_attack",
-    angle_of_attack=0,
-    side_slip=0,
-    yaw_rate=0,
-    Umag=10,
-    title="default_kite_polars",
-    data_type=".pdf",
-    save_path=None,
-    is_save=False,
-    is_show=True,
-)
+# ### plotting polar
+# plotting.plot_polars(
+#     solver_list=[solver],
+#     wing_aero_list=[wing_aero_breukels],
+#     label_list=["Polar"],
+#     literature_path_list=[],
+#     angle_range=np.linspace(0, 20, 10),
+#     angle_type="angle_of_attack",
+#     angle_of_attack=0,
+#     side_slip=0,
+#     yaw_rate=0,
+#     Umag=10,
+#     title="default_kite_polars",
+#     data_type=".pdf",
+#     save_path=None,
+#     is_save=False,
+#     is_show=True,
+# )
+# plotting.plot_polars(
+#     solver_list=[solver],
+#     wing_aero_list=[wing_aero_breukels],
+#     label_list=["Polar"],
+#     literature_path_list=[],
+#     angle_range=np.linspace(-10, 10, 10),
+#     angle_type="side_slip",
+#     angle_of_attack=6.8,
+#     side_slip=0,
+#     yaw_rate=0,
+#     Umag=10,
+#     title="default_kite_polars",
+#     data_type=".pdf",
+#     save_path=None,
+#     is_save=False,
+#     is_show=True,
+# )
