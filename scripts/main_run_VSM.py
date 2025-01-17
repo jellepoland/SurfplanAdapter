@@ -13,7 +13,7 @@ from VSM.interactive import interactive_plot
 ## User Inputs
 data_folder_name = "TUDELFT_V3_LEI_KITE"
 kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
-reference_point_for_moment_calculation = [0, 0, 0]
+reference_point_for_moment_calculation = [0.910001, -4.099458, 0.052295]
 
 ## Creating Paths
 path_surfplan_file = (
