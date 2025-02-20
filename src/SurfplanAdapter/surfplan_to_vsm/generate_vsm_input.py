@@ -4,14 +4,16 @@ import numpy as np
 import csv
 
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
+from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import (
+    read_surfplan_txt,
+)
 from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
 from SurfplanAdapter.plotting import plot_and_save_all_profiles
 from VSM.WingGeometry import Wing
-from VSM.WingAerodynamics import WingAerodynamics
 from VSM.plotting import plot_geometry
+from VSM.WingAerodynamics import WingAerodynamics
 
 
 def sort_ribs_by_proximity(ribs_data):
@@ -68,13 +70,92 @@ def sort_ribs_by_proximity(ribs_data):
     return sorted_ribs_data
 
 
+def saving_wing_geometry(
+    dir_to_save_in,
+    row_input_list,
+    is_strut_list,
+    airfoil_input_type,
+):
+    if airfoil_input_type != "lei_airfoil_breukels":
+        raise ValueError(
+            f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
+        )
+    path_to_save_geometry = Path(dir_to_save_in) / "wing_geometry.csv"
+    if path_to_save_geometry is None:
+        raise ValueError("You must provide a csv_file_path.")
+    if not os.path.exists(path_to_save_geometry):
+        os.makedirs(os.path.dirname(path_to_save_geometry), exist_ok=True)
+
+    with open(path_to_save_geometry, "w", newline="") as f:
+        writer = csv.writer(f)
+        # Write the header
+        writer.writerow(
+            [
+                "LE_x",
+                "LE_y",
+                "LE_z",
+                "TE_x",
+                "TE_y",
+                "TE_z",
+                "d_tube",
+                "camber",
+                "is_strut",
+            ]
+        )
+        # Write the data for each rib
+        for row, is_strut in zip(row_input_list, is_strut_list):
+            writer.writerow(
+                [
+                    row[0][0],
+                    row[0][1],
+                    row[0][2],
+                    row[1][0],
+                    row[1][1],
+                    row[1][2],
+                    row[2][1][0],
+                    row[2][1][1],
+                    is_strut,
+                ]
+            )
+
+
+def saving_bridle_lines(bridle_lines, dir_to_save_in):
+    file_path = Path(dir_to_save_in) / "bridle_lines.csv"
+    # Now, write the data to a CSV file
+    with open(file_path, "w", newline="") as csvfile:
+        # Define the column names
+        fieldnames = ["p1_x", "p1_y", "p1_z", "p2_x", "p2_y", "p2_z", "diameter"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # Write header
+        writer.writeheader()
+
+        # Write each row, unpacking the points and diameter
+        for bridle_line in bridle_lines:
+            # Ensure the bridle_line has the expected structure
+            if bridle_line is None or len(bridle_line) != 3:
+                continue
+            p1, p2, diameter = bridle_line
+            # Create the row dictionary; use conditional checks if needed
+            row = {
+                "p1_x": p1[0] if p1 is not None else None,
+                "p1_y": p1[1] if p1 is not None else None,
+                "p1_z": p1[2] if p1 is not None else None,
+                "p2_x": p2[0] if p2 is not None else None,
+                "p2_y": p2[1] if p2 is not None else None,
+                "p2_z": p2[2] if p2 is not None else None,
+                "diameter": diameter,
+            }
+            writer.writerow(row)
+
+
 def generate_VSM_input(
     path_surfplan_file: str,
     n_panels: int,
     spanwise_panel_distribution: str = "linear",
     airfoil_input_type: str = "lei_airfoil_breukels",
-    is_save_geometry=False,
-    path_to_save_geometry=None,
+    is_save=False,
+    dir_to_save_in=None,
 ):
     """
     Generate Input for the Vortex Step Method
@@ -89,7 +170,19 @@ def generate_VSM_input(
     Returns:
         None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
     """
-    ribs_data = read_surfplan_txt(path_surfplan_file, airfoil_input_type)
+    ribs_data, bridle_lines = read_surfplan_txt(path_surfplan_file, airfoil_input_type)
+    if len(bridle_lines) > 0:
+        is_with_bridle_lines = True
+        bridle_lines = [
+            [
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),
+                bridle_line[2],
+            ]
+            for bridle_line in bridle_lines
+        ]
+    else:
+        is_with_bridle_lines = False
     # Saving all the airfoil plots
     data_folder = Path(path_surfplan_file).parent
     profile_folder = data_folder.joinpath("profiles")
@@ -106,6 +199,7 @@ def generate_VSM_input(
         LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
         if airfoil_input_type == "lei_airfoil_breukels":
+            print("d_tube:", rib["d_tube"], "camber:", rib["camber"])
             polar_data = [
                 "lei_airfoil_breukels",
                 [rib["d_tube"], rib["camber"]],
@@ -127,49 +221,15 @@ def generate_VSM_input(
         )
 
     # Save wing geometry in a csv file
-    if is_save_geometry:
-        if airfoil_input_type != "lei_airfoil_breukels":
-            raise ValueError(
-                f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
-            )
-        if path_to_save_geometry is None:
-            raise ValueError("You must provide a csv_file_path.")
-        if not os.path.exists(path_to_save_geometry):
-            os.makedirs(os.path.dirname(path_to_save_geometry), exist_ok=True)
+    if is_save:
+        saving_wing_geometry(
+            dir_to_save_in, row_input_list, is_strut_list, airfoil_input_type
+        )
 
-        with open(path_to_save_geometry, "w", newline="") as f:
-            writer = csv.writer(f)
-            # Write the header
-            writer.writerow(
-                [
-                    "LE_x",
-                    "LE_y",
-                    "LE_z",
-                    "TE_x",
-                    "TE_y",
-                    "TE_z",
-                    "d_tube",
-                    "camber",
-                    "is_strut",
-                ]
-            )
-            # Write the data for each rib
-            for row, is_strut in zip(row_input_list, is_strut_list):
-                writer.writerow(
-                    [
-                        row[0][0],
-                        row[0][1],
-                        row[0][2],
-                        row[1][0],
-                        row[1][1],
-                        row[1][2],
-                        row[2][1][0],
-                        row[2][1][1],
-                        is_strut,
-                    ]
-                )
+        if is_with_bridle_lines:
+            saving_bridle_lines(bridle_lines, dir_to_save_in)
 
-    return WingAerodynamics([wing])
+    return wing, bridle_lines
 
 
 if __name__ == "__main__":
@@ -179,18 +239,17 @@ if __name__ == "__main__":
     path_surfplan_file = (
         Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
     )
-    path_to_save_geometry = (
-        Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}" / "geometry.csv"
-    )
+    dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
 
-    wing_aero = generate_VSM_input(
+    wing, bridle_lines = generate_VSM_input(
         path_surfplan_file=path_surfplan_file,
         n_panels=30,
         spanwise_panel_distribution="unchanged",
         airfoil_input_type="lei_airfoil_breukels",
-        is_save_geometry=True,
-        path_to_save_geometry=path_to_save_geometry,
+        is_save=True,
+        dir_to_save_in=dir_to_save_in,
     )
+    wing_aero = WingAerodynamics([wing])
 
     # setting arbitrary flow conditions
     # 3. Set the flow conditions

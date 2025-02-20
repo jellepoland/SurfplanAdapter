@@ -11,26 +11,23 @@ if __name__ == "__main__":
     kite_name = "TUDELFT_V3_LEI_KITE"
 
     ## Creating Paths
-    geometry_file_path = (
-        Path(PROJECT_DIR) / "processed_data" / f"{kite_name}" / "geometry.csv"
-    )
     path_surfplan_file = (
         Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
     )
-    path_to_save_geometry = (
-        Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}" / "geometry.csv"
-    )
+    dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
+
     ## Create geometry file once
+    geometry_file_path = Path(dir_to_save_in) / "wing_geometry.csv"
     if not geometry_file_path.exists():
         wing_aero_breukels = generate_VSM_input(
             path_surfplan_file=path_surfplan_file,
             n_panels=30,
             spanwise_panel_distribution="unchanged",
             airfoil_input_type="lei_airfoil_breukels",
-            is_save_geometry=True,
-            path_to_save_geometry=path_to_save_geometry,
+            is_save=True,
+            dir_to_save_in=dir_to_save_in,
         )
-        print(f'Generated geometry file at "{path_to_save_geometry}"')
+        print(f'Generated geometry file at "{geometry_file_path}"')
 
     file_path = Path(PROJECT_DIR) / "processed_data" / f"{kite_name}" / "geometry.csv"
     total_wing_mass = 10.0
