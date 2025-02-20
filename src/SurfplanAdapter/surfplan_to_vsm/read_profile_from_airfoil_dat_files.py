@@ -100,7 +100,7 @@ if __name__ == "__main__":
     ax = plt.gca()
     ax.set_aspect("equal", adjustable="box")
     plt.draw()
-    plt.show()
+    # plt.show()
 
     # def rotate_points(points, angle_degrees, center_x=-0.6, center_y=-1.28 / 2):
     #     angle_rad = np.radians(angle_degrees)

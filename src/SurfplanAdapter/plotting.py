@@ -122,6 +122,7 @@ def plot_profiles(filepath, profile_folder):
 
     # Display the plot
     plt.savefig(Path(profile_folder) / f"{filepath.stem}.png")
+    plt.close()
 
 
 def plot_and_save_all_profiles(profile_folder):

@@ -9,6 +9,8 @@ from SurfplanAdapter.logging_config import *
 from VSM.Solver import Solver
 import VSM.plotting as plotting
 from VSM.interactive import interactive_plot
+from VSM.WingAerodynamics import WingAerodynamics
+
 
 ## User Inputs
 data_folder_name = "TUDELFT_V3_LEI_KITE"
@@ -19,9 +21,7 @@ reference_point_for_moment_calculation = [0.910001, -4.099458, 0.052295]
 path_surfplan_file = (
     Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
 )
-path_to_save_geometry = (
-    Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}" / "geometry.csv"
-)
+dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
 
 ## Using polar_data input, requires one to change the "airfoil_input_type" entry to "polar_data"
 # A polar data folder should be created and placed inside the same kite_name folder in data/
@@ -36,14 +36,15 @@ path_to_save_geometry = (
 ### airfoil_input_type (str): Airfoil input type, options:
 #  - "lei_airfoil_breukels": LEI airfoil with Breukels method
 #  - "polar_data": Polar data input, must be provided in the folder "polar_data" in csv form
-wing_aero_breukels = generate_VSM_input(
+wing, bridle_lines = generate_VSM_input(
     path_surfplan_file=path_surfplan_file,
     n_panels=100,
     spanwise_panel_distribution="linear",
     airfoil_input_type="lei_airfoil_breukels",
-    is_save_geometry=True,
-    path_to_save_geometry=path_to_save_geometry,
+    is_save=True,
+    dir_to_save_in=dir_to_save_in,
 )
+wing_aero_breukels = WingAerodynamics([wing])
 
 ## interactive plot
 interactive_plot(

@@ -47,6 +47,85 @@ def line_parser(line):
         return list(map(float, line.split(",")))
 
 
+def read_bridle_lines(filepath):
+    """
+    Read the bridle line data from a Surfplan .txt file.
+
+    This function locates the "3d Bridle" section in the file, skips its header,
+    and then parses each subsequent line to extract:
+      - point1: [TopX, Y, Z]
+      - point2: [BottomX, Y, Z]
+      - diameter: the value in the 'Diameter' column
+
+    Each bridle line is stored as:
+        bridle_line = [point1, point2, diameter]
+    and all such lines are collected in a list which is returned.
+
+    Parameters:
+        filepath (str): Path to the Surfplan .txt file.
+
+    Returns:
+        list: A list of bridle lines, each as [point1, point2, diameter].
+              If a diameter field is empty, it is set to None.
+    """
+    bridle_lines = []
+    in_bridle_section = False
+    header_skipped = False
+
+    with open(filepath, "r") as file:
+        lines = file.readlines()
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Look for the start of the bridle section.
+        if "3d Bridle" in line:
+            in_bridle_section = True
+            header_skipped = False  # Reset header skip for the new section.
+            continue
+
+        if in_bridle_section:
+            # Skip the header line (which contains column names)
+            if not header_skipped:
+                header_skipped = True
+                continue
+
+            # If the line does not contain a semicolon, assume the bridle section has ended.
+            if ";" not in line:
+                break
+
+            # Split the line by semicolons and strip extra whitespace.
+            parts = [part.strip() for part in line.split(";")]
+
+            # Expecting at least 10 columns based on the header:
+            # TopX, Y, Z, BottomX, Y, Z, Name, Length, Material, Diameter
+            if len(parts) < 10:
+                continue
+
+            try:
+                # Extract point1 from the first three columns.
+                point1 = [float(parts[i].replace(",", ".")) for i in range(3)]
+                # Extract point2 from columns 4-6.
+                point2 = [float(parts[i].replace(",", ".")) for i in range(3, 6)]
+            except ValueError:
+                # Skip this line if conversion fails.
+                continue
+
+            # The diameter is expected to be in the 10th column (index 9).
+            diam_str = parts[9].replace(",", ".")
+            try:
+                diameter = float(diam_str) if diam_str else None
+            except ValueError:
+                diameter = None
+
+            bridle_line = [point1, point2, diameter]
+            bridle_lines.append(bridle_line)
+
+    return bridle_lines
+
+
 def read_surfplan_txt(filepath, airfoil_input_type):
     """
     Read the main characteristics of kite ribs and LE (Leading Edge) tube sections from the .txt file from Surfplan.
@@ -310,7 +389,9 @@ def read_surfplan_txt(filepath, airfoil_input_type):
                 right_wing_tip_additions,
             ]
         )
-    return ribs_data
+
+    bridle_lines = read_bridle_lines(filepath)
+    return ribs_data, bridle_lines
 
 
 if __name__ == "__main__":
@@ -320,3 +401,6 @@ if __name__ == "__main__":
     ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
     for rib in ribs_data:
         print(rib)
+    bridle_lines = read_bridle_lines(filepath)
+    for bridle_line in bridle_lines:
+        print(bridle_line)
