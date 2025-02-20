@@ -1,7 +1,7 @@
 from pathlib import Path
 from SurfplanAdapter import calculate_cg_and_inertia
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter.surfplan_to_vsm.generate_vsm_input import generate_VSM_input
+from SurfplanAdapter.generate_vsm_input import generate_VSM_input
 
 if __name__ == "__main__":
 

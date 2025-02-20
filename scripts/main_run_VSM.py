@@ -1,7 +1,7 @@
 # %% importing necessary modules
 import numpy as np
 from pathlib import Path
-from SurfplanAdapter.surfplan_to_vsm.generate_vsm_input import (
+from SurfplanAdapter.generate_vsm_input import (
     generate_VSM_input,
 )
 from SurfplanAdapter.utils import PROJECT_DIR
