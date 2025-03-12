@@ -399,8 +399,16 @@ if __name__ == "__main__":
 
     filepath = Path(PROJECT_DIR) / "data" / "default_kite" / "default_kite_3d.txt"
     ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
-    for rib in ribs_data:
-        print(rib)
-    bridle_lines = read_bridle_lines(filepath)
-    for bridle_line in bridle_lines:
-        print(bridle_line)
+
+    filepath = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "TUDELFT_V3_KITE_3d.txt"
+    ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
+
+    for i, rib in enumerate(ribs_data[0]):
+        # print(rib)
+        chord = np.linalg.norm(rib["TE"] - rib["LE"])
+        print(
+            f"i:{i+1} -- d_tube: {rib['d_tube']:.4f}, camber: {rib['camber']:.4f} chord: {chord:.4f} "
+        )
+    # bridle_lines = read_bridle_lines(filepath)
+    # for bridle_line in bridle_lines:
+    # print(bridle_line)
