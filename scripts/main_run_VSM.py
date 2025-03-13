@@ -1,26 +1,29 @@
 # %% importing necessary modules
 import numpy as np
 from pathlib import Path
-from SurfplanAdapter.generate_vsm_input import (
-    generate_VSM_input,
-)
+from SurfplanAdapter import generate_vsm_input
 from SurfplanAdapter.utils import PROJECT_DIR
 from SurfplanAdapter.logging_config import *
 from VSM.Solver import Solver
 import VSM.plotting as plotting
 from VSM.interactive import interactive_plot
-from VSM.WingAerodynamics import WingAerodynamics
+from VSM.BodyAerodynamics import BodyAerodynamics
 
 
 ## User Inputs
-data_folder_name = "TUDELFT_V3_LEI_KITE"
-kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
+data_folder_name = "TUDELFT_V3_KITE"
+kite_file_name = "TUDELFT_V3_KITE_3d"
 reference_point_for_moment_calculation = [0.910001, -4.099458, 0.052295]
 
 ## Creating Paths
 path_surfplan_file = (
     Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
 )
+profile_load_dir = Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / "profiles"
+profile_save_dir = (
+    Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}" / "profiles"
+)
+
 dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
 
 ## Using polar_data input, requires one to change the "airfoil_input_type" entry to "polar_data"
@@ -36,15 +39,17 @@ dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
 ### airfoil_input_type (str): Airfoil input type, options:
 #  - "lei_airfoil_breukels": LEI airfoil with Breukels method
 #  - "polar_data": Polar data input, must be provided in the folder "polar_data" in csv form
-wing, bridle_lines = generate_VSM_input(
+wing, bridle_lines = generate_vsm_input.main(
     path_surfplan_file=path_surfplan_file,
+    profile_load_dir=dir_to_save_in,
+    profile_save_dir=dir_to_save_in,
     n_panels=100,
-    spanwise_panel_distribution="linear",
+    spanwise_panel_distribution="uniform",
     airfoil_input_type="lei_airfoil_breukels",
     is_save=True,
     dir_to_save_in=dir_to_save_in,
 )
-wing_aero_breukels = WingAerodynamics([wing])
+wing_aero_breukels = BodyAerodynamics([wing])
 
 ## interactive plot
 interactive_plot(
@@ -68,9 +73,7 @@ wing_aero_breukels.va = (
 ### Solve the aerodynamics
 # cl,cd,cs coefficients are flipped to "normal ref frame"
 # x (+) downstream, y(+) left and z(+) upwards reference frame
-solver = Solver(
-    aerodynamic_model_type="VSM", reference_point=reference_point_for_moment_calculation
-)
+solver = Solver()
 
 ### plotting distributions
 result = solver.solve(wing_aero_breukels)

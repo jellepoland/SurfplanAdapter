@@ -306,6 +306,7 @@ def read_lines(surfplan_txt_file_path: Path):
 def correcting_wingtip_by_adding_ribs(
     wingtip,
     n_wingtip_segments,
+    profile_save_dir,
     le_tube,
     airfoil_input_type,
     kite_dir_path,
@@ -565,6 +566,7 @@ def main(
         ribs_data = correcting_wingtip_by_adding_ribs(
             wingtip,
             n_wingtip_segments,
+            profile_save_dir,
             le_tube,
             airfoil_input_type,
             kite_dir_path,
