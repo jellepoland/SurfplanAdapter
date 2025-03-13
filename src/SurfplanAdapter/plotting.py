@@ -58,7 +58,7 @@ def plot_ribs(ribs_coord):
 # Plot the profile described in the input file and display caracteristics
 # Input :
 #   filepath : str
-def plot_profiles(filepath, profile_folder):
+def plot_profiles(filepath, profile_folder, t, c):
     """
     Plot the profile described in the input file and display its characteristics.
 
@@ -86,18 +86,21 @@ def plot_profiles(filepath, profile_folder):
     # Read profile characteristics from the file
     profile = reading_profile_from_airfoil_dat_files(filepath)
     profile_name = profile["name"]
-    depth = profile["depth"]
-    x_depth = profile["x_depth"]
-    TE_angle = profile["TE_angle"]
 
     # Plot the profile points
     plt.figure(figsize=(10, 6))
-    plt.plot(x_points, y_points, marker="", linestyle="-", color="b")
+    plt.plot(x_points, y_points, marker="", linestyle="-", color="black")
 
     # Highlight the highest point in red
-    # plt.scatter(
-    # [x_depth / 100], [depth / 100], color="r", zorder=5, label="Highest Point"
-    # )
+    x_max_camber = profile["x_max_camber"]
+    y_max_camber = profile["y_max_camber"]
+    plt.scatter(
+        x_max_camber,
+        y_max_camber,
+        color="b",
+        zorder=3,
+        label="max_camber: ({x:.3f}, {y:.3f})".format(x=x_max_camber, y=y_max_camber),
+    )
 
     # Annotate the highest point with its coordinates
     # plt.annotate(
@@ -107,14 +110,18 @@ def plot_profiles(filepath, profile_folder):
     #     arrowprops=dict(facecolor="black", arrowstyle="->"),
     # )
 
-    # Set plot labels and title
-    plt.xlabel("X Coordinate")
-    plt.ylabel("Y Coordinate")
-    plt.title(profile_name)
+    # Create a circle
+    radius = t / 2
+    circle = plt.Circle((radius, 0), radius, fill=False, linestyle="-", color="b")
 
-    # Create a legend with profile characteristics
-    legend = f"Depth: {depth:.2f}%\nx_depth = {x_depth:.2f}%\nTE Angle: {TE_angle:.2f}°"
-    plt.legend([legend], loc="best")
+    # Add the circle to the current axes
+    plt.gca().add_patch(circle)
+    plt.xlabel(f"$x/c$")
+    plt.ylabel(f"$y/c$")
+    plt.title(
+        rf'{profile_name} --- t: {t:.3f} $\eta$: {profile["x_max_camber"]:.3f}, $\kappa$: {profile["y_max_camber"]:.3f}, $\lambda$: {profile["TE_angle"]:.3f}, c: {c:.3f}'
+    )
+    plt.legend(loc="lower center")
     # Enable grid for better readability
     plt.grid(True)
     # Set equal aspect ratio for the plot
@@ -125,13 +132,20 @@ def plot_profiles(filepath, profile_folder):
     plt.close()
 
 
-def plot_and_save_all_profiles(profile_folder):
+def plot_and_save_all_profiles(profile_folder, surfplan_txt_file_path=None):
+    ribs_data = read_surfplan_txt(surfplan_txt_file_path, "lei_airfoil_breukels")[0]
+
     # Ensure the directory exists
+    i = 0
     if profile_folder.is_dir():
         for file_name in profile_folder.iterdir():
             # Check if the file name starts with "prof" and ends with ".dat"
             if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
-                plot_profiles(file_name, profile_folder)
+                i += 1
+                rib = ribs_data[i]
+                plot_profiles(
+                    file_name, profile_folder, t=rib["d_tube"], c=rib["chord"]
+                )
     else:
         print(f"Directory {profile_folder} does not exist.")
 
