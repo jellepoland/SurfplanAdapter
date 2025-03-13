@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import os
+import pandas as pd
 from pathlib import Path
 from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
 from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import (
@@ -58,7 +59,9 @@ def plot_ribs(ribs_coord):
 # Plot the profile described in the input file and display caracteristics
 # Input :
 #   filepath : str
-def plot_profiles(filepath, profile_folder, t, c):
+def plot_profiles(
+    filepath, profile_folder, t, c, is_with_return_t_eta_kappa_delta_c=False
+):
     """
     Plot the profile described in the input file and display its characteristics.
 
@@ -97,7 +100,7 @@ def plot_profiles(filepath, profile_folder, t, c):
     plt.scatter(
         x_max_camber,
         y_max_camber,
-        color="b",
+        color="black",
         zorder=3,
         label="max_camber: ({x:.3f}, {y:.3f})".format(x=x_max_camber, y=y_max_camber),
     )
@@ -112,14 +115,14 @@ def plot_profiles(filepath, profile_folder, t, c):
 
     # Create a circle
     radius = t / 2
-    circle = plt.Circle((radius, 0), radius, fill=False, linestyle="-", color="b")
+    circle = plt.Circle((radius, 0), radius, fill=False, linestyle="-", color="black")
 
     # Add the circle to the current axes
     plt.gca().add_patch(circle)
     plt.xlabel(f"$x/c$")
     plt.ylabel(f"$y/c$")
     plt.title(
-        rf'{profile_name} --- t: {t:.3f} $\eta$: {profile["x_max_camber"]:.3f}, $\kappa$: {profile["y_max_camber"]:.3f}, $\lambda$: {profile["TE_angle"]:.3f}, c: {c:.3f}'
+        rf'{profile_name} --- t: {t:.3f} $\eta$: {profile["x_max_camber"]:.3f}, $\kappa$: {profile["y_max_camber"]:.3f}, $\delta$: {profile["TE_angle"]:.3f}deg, c: {c:.3f}m'
     )
     plt.legend(loc="lower center")
     # Enable grid for better readability
@@ -131,23 +134,82 @@ def plot_profiles(filepath, profile_folder, t, c):
     plt.savefig(Path(profile_folder) / f"{filepath.stem}.png")
     plt.close()
 
+    if is_with_return_t_eta_kappa_delta_c:
+        return (
+            t,
+            profile["x_max_camber"],
+            profile["y_max_camber"],
+            profile["TE_angle"],
+            c,
+        )
 
-def plot_and_save_all_profiles(profile_folder, surfplan_txt_file_path=None):
+
+def plot_and_save_all_profiles(profile_folder, surfplan_txt_file_path):
+
+    if not profile_folder.is_dir():
+        raise ValueError(f"Directory {profile_folder} does not exist.")
+
+    if not surfplan_txt_file_path.is_file():
+        raise ValueError(f"File {surfplan_txt_file_path} does not exist.")
+
     ribs_data = read_surfplan_txt(surfplan_txt_file_path, "lei_airfoil_breukels")[0]
 
-    # Ensure the directory exists
+    # Create a list to store the data for each profile
+    profile_data = []
+
     i = 0
-    if profile_folder.is_dir():
-        for file_name in profile_folder.iterdir():
-            # Check if the file name starts with "prof" and ends with ".dat"
-            if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
-                i += 1
-                rib = ribs_data[i]
-                plot_profiles(
-                    file_name, profile_folder, t=rib["d_tube"], c=rib["chord"]
-                )
+    for file_name in profile_folder.iterdir():
+        # Check if the file name starts with "prof" and ends with ".dat"
+        if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
+            i += 1
+            rib = ribs_data[i]
+            t, eta, kappa, delta, c = plot_profiles(
+                file_name,
+                profile_folder,
+                t=rib["d_tube"],
+                c=rib["chord"],
+                is_with_return_t_eta_kappa_delta_c=True,
+            )
+
+            # Add data to our list
+            profile_data.append(
+                {
+                    "profile_name": file_name.stem,
+                    "t": t,
+                    "eta": eta,
+                    "kappa": kappa,
+                    "delta": delta,
+                    "c": c,
+                }
+            )
+
+    # Convert the list to a pandas DataFrame
+    if profile_data:
+        df = pd.DataFrame(profile_data)
+
+        # sort on last str in profile_name
+        df["profile_number"] = df["profile_name"].str.split("_").str[-1].astype(int)
+        df = df.sort_values("profile_number")
+
+        # reshuffle the columns
+        df = df[
+            [
+                "profile_number",
+                "profile_name",
+                "t",
+                "eta",
+                "kappa",
+                "delta",
+                "c",
+            ]
+        ]
+
+        # Save the DataFrame to a CSV file
+        csv_path = profile_folder / "profile_parameters.csv"
+        df.to_csv(csv_path, index=False)
+        print(f"Profile parameters saved to {csv_path}")
     else:
-        print(f"Directory {profile_folder} does not exist.")
+        print("No profiles found to save.")
 
 
 if __name__ == "__main__":
