@@ -1,7 +1,7 @@
 from pathlib import Path
 from SurfplanAdapter import calculate_cg_and_inertia
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter import generate_vsm_input
+from SurfplanAdapter import generate_geometry_csv_files
 
 if __name__ == "__main__":
 

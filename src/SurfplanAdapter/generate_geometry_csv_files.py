@@ -68,7 +68,7 @@ def sort_ribs_by_proximity(ribs_data):
 
 
 def saving_wing_geometry(
-    dir_to_save_in,
+    save_dir,
     row_input_list,
     is_strut_list,
     airfoil_input_type,
@@ -77,7 +77,7 @@ def saving_wing_geometry(
         raise ValueError(
             f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
         )
-    path_to_save_geometry = Path(dir_to_save_in) / "wing_geometry.csv"
+    path_to_save_geometry = Path(save_dir) / "wing_geometry.csv"
     if path_to_save_geometry is None:
         raise ValueError("You must provide a csv_file_path.")
     if not os.path.exists(path_to_save_geometry):
@@ -116,8 +116,8 @@ def saving_wing_geometry(
             )
 
 
-def saving_bridle_lines(bridle_lines, dir_to_save_in):
-    file_path = Path(dir_to_save_in) / "bridle_lines.csv"
+def saving_bridle_lines(bridle_lines, save_dir):
+    file_path = Path(save_dir) / "bridle_lines.csv"
     # Now, write the data to a CSV file
     with open(file_path, "w", newline="") as csvfile:
         # Define the column names
@@ -148,13 +148,10 @@ def saving_bridle_lines(bridle_lines, dir_to_save_in):
 
 def main(
     path_surfplan_file: str,
+    save_dir: Path,
     profile_load_dir: Path,
     profile_save_dir: Path,
-    n_panels: int = 100,
-    spanwise_panel_distribution: str = "uniform",
     airfoil_input_type: str = "lei_airfoil_breukels",
-    is_save: bool = False,
-    dir_to_save_in: Path = None,
 ):
     """
     Generate Input for the Vortex Step Method
@@ -193,7 +190,6 @@ def main(
     ribs_data = sort_ribs_by_proximity(ribs_data)
 
     # Create wing geometry
-    wing = Wing(n_panels, spanwise_panel_distribution)
     row_input_list = []
     is_strut_list = []
     for rib in ribs_data:
@@ -211,7 +207,6 @@ def main(
             raise ValueError(
                 f"current airfoil_input_type: {airfoil_input_type} is not recognized, change string value"
             )
-        wing.add_section(LE, TE, polar_data)
         row_input_list.append(
             [
                 LE,
@@ -221,12 +216,7 @@ def main(
         )
 
     # Save wing geometry in a csv file
-    if is_save:
-        saving_wing_geometry(
-            dir_to_save_in, row_input_list, is_strut_list, airfoil_input_type
-        )
+    saving_wing_geometry(save_dir, row_input_list, is_strut_list, airfoil_input_type)
 
-        if is_with_bridle_lines:
-            saving_bridle_lines(bridle_lines, dir_to_save_in)
-
-    return wing, bridle_lines
+    if is_with_bridle_lines:
+        saving_bridle_lines(bridle_lines, save_dir)

@@ -157,6 +157,7 @@ def plot_and_save_all_profiles(profile_save_dir, ribs_data):
         if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
             i += 1
             rib = ribs_data[i]
+            # print(f"rib: {rib}")
             t, eta, kappa, delta, c = plot_profiles(
                 file_name,
                 profile_save_dir=profile_save_dir,
