@@ -1,7 +1,7 @@
 from pathlib import Path
 from SurfplanAdapter import calculate_cg_and_inertia
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter.generate_vsm_input import generate_VSM_input
+from SurfplanAdapter import generate_vsm_input
 
 if __name__ == "__main__":
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ## Create geometry file once
     geometry_file_path = Path(dir_to_save_in) / "wing_geometry.csv"
     if not geometry_file_path.exists():
-        wing_aero_breukels = generate_VSM_input(
+        wing_aero_breukels = generate_VSM_input.main(
             path_surfplan_file=path_surfplan_file,
             n_panels=30,
             spanwise_panel_distribution="unchanged",

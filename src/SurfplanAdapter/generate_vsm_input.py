@@ -146,13 +146,15 @@ def saving_bridle_lines(bridle_lines, dir_to_save_in):
             writer.writerow(row)
 
 
-def generate_VSM_input(
+def main(
     path_surfplan_file: str,
-    n_panels: int,
-    spanwise_panel_distribution: str = "linear",
+    profile_load_dir: Path,
+    profile_save_dir: Path,
+    n_panels: int = 100,
+    spanwise_panel_distribution: str = "uniform",
     airfoil_input_type: str = "lei_airfoil_breukels",
-    is_save=False,
-    dir_to_save_in=None,
+    is_save: bool = False,
+    dir_to_save_in: Path = None,
 ):
     """
     Generate Input for the Vortex Step Method
@@ -169,8 +171,8 @@ def generate_VSM_input(
     """
     ribs_data, bridle_lines = main_process_surfplan.main(
         surfplan_txt_file_path=path_surfplan_file,
-        profile_load_dir=None,
-        profile_save_dir=None,
+        profile_load_dir=profile_load_dir,
+        profile_save_dir=profile_save_dir,
         is_make_plots=True,
         airfoil_input_type=airfoil_input_type,
     )
@@ -198,10 +200,9 @@ def generate_VSM_input(
         LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
         if airfoil_input_type == "lei_airfoil_breukels":
-            print("d_tube:", rib["d_tube"], "camber:", rib["camber"])
             polar_data = [
                 "lei_airfoil_breukels",
-                [rib["d_tube"], rib["camber"]],
+                [rib["d_tube"], rib["y_max_camber"]],
             ]
             is_strut_list.append(rib["is_strut"])
         elif airfoil_input_type == "polar_data":
@@ -229,45 +230,3 @@ def generate_VSM_input(
             saving_bridle_lines(bridle_lines, dir_to_save_in)
 
     return wing, bridle_lines
-
-
-if __name__ == "__main__":
-
-    data_folder_name = "TUDELFT_V3_KITE"
-    kite_file_name = "TUDELFT_V3_KITE_3d"
-    path_surfplan_file = (
-        Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
-    )
-    dir_to_save_in = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
-
-    wing, bridle_lines = generate_VSM_input(
-        path_surfplan_file=path_surfplan_file,
-        n_panels=30,
-        spanwise_panel_distribution="unchanged",
-        airfoil_input_type="lei_airfoil_breukels",
-        is_save=True,
-        dir_to_save_in=dir_to_save_in,
-    )
-    wing_aero = BodyAerodynamics([wing])
-
-    # setting arbitrary flow conditions
-    # 3. Set the flow conditions
-    aoa = np.deg2rad(10)
-    sideslip = 0
-    Umag = 20
-
-    wing_aero.va = (
-        np.array([np.cos(aoa) * np.cos(sideslip), np.sin(sideslip), np.sin(aoa)])
-        * Umag,
-        0,
-    )
-
-    # plotting
-    plot_geometry(
-        wing_aero,
-        title="geometry",
-        data_type=".pdf",
-        is_save=False,
-        is_show=True,
-        save_path=None,
-    )
