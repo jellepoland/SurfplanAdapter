@@ -3,11 +3,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 import pandas as pd
 from pathlib import Path
-from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import read_surfplan_txt
-from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import (
+from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
     reading_profile_from_airfoil_dat_files,
 )
-from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
+from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
 
@@ -60,7 +59,7 @@ def plot_ribs(ribs_coord):
 # Input :
 #   filepath : str
 def plot_profiles(
-    filepath, profile_folder, t, c, is_with_return_t_eta_kappa_delta_c=False
+    filepath, profile_save_dir, t, c, is_with_return_t_eta_kappa_delta_c=False
 ):
     """
     Plot the profile described in the input file and display its characteristics.
@@ -131,7 +130,7 @@ def plot_profiles(
     plt.gca().set_aspect("equal", adjustable="box")  # Set equal aspect ratio
 
     # Display the plot
-    plt.savefig(Path(profile_folder) / f"{filepath.stem}.png")
+    plt.savefig(Path(profile_save_dir) / f"{filepath.stem}.png")
     plt.close()
 
     if is_with_return_t_eta_kappa_delta_c:
@@ -144,28 +143,23 @@ def plot_profiles(
         )
 
 
-def plot_and_save_all_profiles(profile_folder, surfplan_txt_file_path):
+def plot_and_save_all_profiles(profile_save_dir, ribs_data):
 
-    if not profile_folder.is_dir():
-        raise ValueError(f"Directory {profile_folder} does not exist.")
-
-    if not surfplan_txt_file_path.is_file():
-        raise ValueError(f"File {surfplan_txt_file_path} does not exist.")
-
-    ribs_data = read_surfplan_txt(surfplan_txt_file_path, "lei_airfoil_breukels")[0]
+    if not profile_save_dir.is_dir():
+        raise ValueError(f"Directory {profile_save_dir} does not exist.")
 
     # Create a list to store the data for each profile
     profile_data = []
 
     i = 0
-    for file_name in profile_folder.iterdir():
+    for file_name in profile_save_dir.iterdir():
         # Check if the file name starts with "prof" and ends with ".dat"
         if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
             i += 1
             rib = ribs_data[i]
             t, eta, kappa, delta, c = plot_profiles(
                 file_name,
-                profile_folder,
+                profile_save_dir=profile_save_dir,
                 t=rib["d_tube"],
                 c=rib["chord"],
                 is_with_return_t_eta_kappa_delta_c=True,
@@ -205,32 +199,8 @@ def plot_and_save_all_profiles(profile_folder, surfplan_txt_file_path):
         ]
 
         # Save the DataFrame to a CSV file
-        csv_path = profile_folder / "profile_parameters.csv"
+        csv_path = profile_save_dir / "profile_parameters.csv"
         df.to_csv(csv_path, index=False)
         print(f"Profile parameters saved to {csv_path}")
     else:
         print("No profiles found to save.")
-
-
-if __name__ == "__main__":
-    from SurfplanAdapter.utils import PROJECT_DIR
-
-    filepath = (
-        Path(PROJECT_DIR)
-        / "data"
-        / "TUDELFT_V3_LEI_KITE"
-        / "TUDELFT_V3_LEI_KITE_3d.txt"
-    )
-    ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
-    ribs_coords_surfplan = [[rib["LE"], rib["TE"]] for rib in ribs_data]
-    ribs_coords_vsm = [
-        [
-            transform_coordinate_system_surfplan_to_VSM(rib["LE"]),
-            transform_coordinate_system_surfplan_to_VSM(rib["TE"]),
-        ]
-        for rib in ribs_data
-    ]
-    # Plot the data
-    plot_ribs(ribs_coords_vsm)
-    profile_folder = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles"
-    plot_and_save_all_profiles(profile_folder)

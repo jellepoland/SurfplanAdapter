@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 import os
 from pathlib import Path
-from SurfplanAdapter.surfplan_to_vsm.read_profile_from_airfoil_dat_files import (
+from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
     reading_profile_from_airfoil_dat_files,
 )
+from SurfplanAdapter.plotting import plot_and_save_all_profiles
 
 
 def read_airfoil_polar_data(
@@ -191,22 +192,19 @@ def generate_wingtip_point_lists(
     return wingtip_point_lists
 
 
-def read_surfplan_txt(filepath, airfoil_input_type):
+def read_lines(surfplan_txt_file_path: Path):
     """
-    Read the main characteristics of kite ribs and LE (Leading Edge) tube sections from the .txt file from Surfplan.
+    Read the data from a Surfplan .txt file and return the ribs' data and bridle lines.
 
     Parameters:
-    filepath (str): The name of the file containing the 3D rib and LE tube data.
+        surfplan_txt_file_path (Path): Path to the Surfplan .txt file.
 
     Returns:
-    list of dict: A list of dictionaries, each containing the leading edge (LE) position, trailing edge (TE) position,
-                  and airfoil characteristics (tube diameter and x_max_camber, y_max_camber height) for each rib.
+        tuple: A tuple containing the ribs' data and bridle lines.
     """
-    kite_dir_path = os.path.dirname(filepath)
-    with open(filepath, "r") as file:
+    with open(surfplan_txt_file_path, "r") as file:
         lines = file.readlines()
 
-    ribs_data = []  # Output list to store the ribs' data
     ribs = (
         []
     )  # List to store rib data: [LE position [x,y,z], TE position [x,y,z], Up vector VUP [x,y,z]]
@@ -302,6 +300,195 @@ def read_surfplan_txt(filepath, airfoil_input_type):
         #         center = np.array(values[0:3])  # Strut center position (X, Y, Z)
         #         diameter = values[3]  # Strut diameter
         #         struts.append({"center": center, "diameter": diameter})
+    return ribs, wingtip, le_tube, n_ribs, n_wingtip_segments, strut_id_list
+
+
+def correcting_wingtip_by_adding_ribs(
+    wingtip,
+    n_wingtip_segments,
+    le_tube,
+    airfoil_input_type,
+    kite_dir_path,
+    n_profiles,
+    ribs_data,
+):
+    ## Preparing LE, TE from the wingtip list
+    wingtip = wingtip[::-1]
+    le_list = [wingtip[i][0] for i in range(n_wingtip_segments)]
+    te_list = [wingtip[i][1] for i in range(n_wingtip_segments)]
+    chord_len_list = [
+        np.linalg.norm(te_i - le_i) for le_i, te_i in zip(le_list, te_list)
+    ]
+
+    ## profile of most outer rib thats not the wingtip
+
+    profile_outer_rib, point_list_outer_rib = reading_profile_from_airfoil_dat_files(
+        Path(kite_dir_path) / "profiles" / f"prof_{int(n_profiles-1)}.dat",
+        is_return_point_list=True,
+    )
+    profile_tip, point_list_tip = reading_profile_from_airfoil_dat_files(
+        Path(kite_dir_path) / "profiles" / f"prof_{n_profiles}.dat",
+        is_return_point_list=True,
+    )
+
+    ## Generating wingtip point lists
+    wingtip_point_lists = generate_wingtip_point_lists(
+        point_list_outer_rib, point_list_tip, n_wingtip_segments - 1
+    )
+    # saving these again as .dat files
+    for i, wingtip_point_list in enumerate(wingtip_point_lists):
+        n_profile = n_profiles + i
+        profile_name = f"prof_{n_profile}"
+        with open(Path(profile_save_dir) / f"{profile_name}.dat", "w") as file:
+            file.write(f"{profile_name}\n")
+            for point in wingtip_point_list:
+                file.write(f"{point[0]} {point[1]}\n")
+
+    ## Assuming things decrease linearly
+    def linear_decrease(parameter):
+        return np.linspace(
+            profile_outer_rib[parameter], profile_tip[parameter], n_wingtip_segments
+        )
+
+    x_max_camber_list = linear_decrease("x_max_camber")
+    y_max_camber_list = linear_decrease("y_max_camber")
+    TE_angle_list = linear_decrease("TE_angle")
+
+    tube_diam_outer_rib = le_tube[-2]
+    tube_diam_tip = le_tube[-1]
+    tube_diam_list = np.linspace(
+        tube_diam_outer_rib, tube_diam_tip, n_wingtip_segments
+    ) / np.array(chord_len_list)
+    chord_list = chord_len_list
+
+    ## Assuming polar_data decreases linearly
+    if airfoil_input_type == "polar_data":
+        polar_data_outer_rib = read_airfoil_polar_data(
+            airfoil_input_type, kite_dir_path, f"prof_{int(n_profiles-1)}"
+        )
+        polar_data_tip = read_airfoil_polar_data(
+            airfoil_input_type, kite_dir_path, f"prof_{n_profiles}"
+        )
+        polar_data_list = []
+        # Perform linear interpolation for each segment
+        for alpha in np.linspace(0, 1, n_wingtip_segments):
+            interpolated_data = (
+                1 - alpha
+            ) * polar_data_outer_rib + alpha * polar_data_tip
+            polar_data_list.append(interpolated_data)
+    elif airfoil_input_type == "lei_airfoil_breukels":
+        polar_data_list = [None for i in range(n_wingtip_segments)]
+    else:
+        raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
+
+    ## Make lists for all ribs from left wing tip to right wing tip
+    left_wing_tip_additions = []
+    for i, (
+        le_i,
+        te_i,
+        d_tube_i,
+        x_max_camber_i,
+        y_max_camber_i,
+        polar_data_i,
+        TE_angle_i,
+        chord_i,
+    ) in enumerate(
+        zip(
+            le_list[::-1],
+            te_list[::-1],
+            tube_diam_list[::-1],
+            x_max_camber_list[::-1],
+            y_max_camber_list[::-1],
+            polar_data_list[::-1],
+            TE_angle_list[::-1],
+            chord_list[::-1],
+        )
+    ):
+
+        left_wing_tip_additions.append(
+            {
+                "LE": le_i,
+                "TE": te_i,
+                "d_tube": d_tube_i,
+                "x_max_camber": x_max_camber_i,
+                "y_max_camber": y_max_camber_i,
+                "polar_data": polar_data_i,
+                "is_strut": False,
+                "TE_angle": TE_angle_i,
+                "chord": chord_i,
+            }
+        )
+    # excluding the tips as the LEs are wrong
+    middle_data_non_wing_tip = ribs_data[1:-1]
+    right_wing_tip_additions = []
+    for i, (
+        le_i,
+        te_i,
+        d_tube_i,
+        x_max_camber_i,
+        y_max_camber_i,
+        polar_data_i,
+        TE_angle_i,
+        chord_i,
+    ) in enumerate(
+        zip(
+            le_list,
+            te_list,
+            tube_diam_list,
+            x_max_camber_list,
+            y_max_camber_list,
+            polar_data_list,
+            TE_angle_list,
+            chord_list,
+        )
+    ):
+
+        right_wing_tip_additions.append(
+            {
+                "LE": np.array([-le_i[0], le_i[1], le_i[2]]),
+                "TE": np.array([-te_i[0], te_i[1], te_i[2]]),
+                "d_tube": d_tube_i,
+                "x_max_camber": x_max_camber_i,
+                "y_max_camber": y_max_camber_i,
+                "polar_data": polar_data_i,
+                "is_strut": False,
+                "TE_angle": TE_angle_i,
+                "chord": chord_i,
+            }
+        )
+    ## concetanating the ribs data
+    ribs_data = np.concatenate(
+        [
+            left_wing_tip_additions,
+            middle_data_non_wing_tip,
+            right_wing_tip_additions,
+        ]
+    )
+    return ribs_data
+
+
+def main(
+    surfplan_txt_file_path: Path,
+    profile_load_dir: Path,
+    profile_save_dir: Path,
+    is_make_plots: bool = False,
+    airfoil_input_type: str = "lei_airfoil_breukels",
+):
+    """Read the data from a Surfplan .txt file and return the ribs' data and bridle lines.
+
+    Parameters:
+        surfplan_txt_file_path (Path): Path to the Surfplan .txt file.
+        profile_save_dir (Path): Path to the directory where the adjusted airfoil_dat files will be saved.
+        airfoil_input_dir (str): The airfoil input directory. Default is "lei_airfoil_breukels".
+
+    Returns:
+        tuple: A tuple containing the ribs' data and bridle lines.
+    """
+
+    kite_dir_path = os.path.dirname(surfplan_txt_file_path)
+    ribs, wingtip, le_tube, n_ribs, n_wingtip_segments, strut_id_list = read_lines(
+        surfplan_txt_file_path
+    )
 
     # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
@@ -314,6 +501,7 @@ def read_surfplan_txt(filepath, airfoil_input_type):
 
     is_strut = False
     point_list_list = []
+    ribs_data = []
     for i in range(n_ribs):
         # Rib position
         rib_le = ribs[i][0]
@@ -371,165 +559,56 @@ def read_surfplan_txt(filepath, airfoil_input_type):
             }
         )
 
+    n_profiles = int(n_ribs // 2)
     ## ADDING WINGTIPS, if described in surfplan txt export file
     if len(wingtip) > 0:
-        ## Preparing LE, TE from the wingtip list
-        wingtip = wingtip[::-1]
-        le_list = [wingtip[i][0] for i in range(n_wingtip_segments)]
-        te_list = [wingtip[i][1] for i in range(n_wingtip_segments)]
-        chord_len_list = [
-            np.linalg.norm(te_i - le_i) for le_i, te_i in zip(le_list, te_list)
-        ]
-
-        ## profile of most outer rib thats not the wingtip
-        n_profiles = int(n_ribs // 2)
-        profile_outer_rib, point_list_outer_rib = (
-            reading_profile_from_airfoil_dat_files(
-                Path(kite_dir_path) / "profiles" / f"prof_{int(n_profiles-1)}.dat",
-                is_return_point_list=True,
-            )
-        )
-        profile_tip, point_list_tip = reading_profile_from_airfoil_dat_files(
-            Path(kite_dir_path) / "profiles" / f"prof_{n_profiles}.dat",
-            is_return_point_list=True,
+        ribs_data = correcting_wingtip_by_adding_ribs(
+            wingtip,
+            n_wingtip_segments,
+            le_tube,
+            airfoil_input_type,
+            kite_dir_path,
+            n_profiles,
+            ribs_data,
         )
 
-        ## Generating wingtip point lists
-        wingtip_point_lists = generate_wingtip_point_lists(
-            point_list_outer_rib, point_list_tip, n_wingtip_segments - 1
-        )
-        # saving these again as .dat files
-        for i, wingtip_point_list in enumerate(wingtip_point_lists):
-            n_profile = n_profiles + i
-            profile_name = f"prof_{n_profile}"
-            with open(
-                Path(kite_dir_path) / "new_profiles" / f"{profile_name}.dat", "w"
-            ) as file:
-                file.write(f"{profile_name}\n")
-                for point in wingtip_point_list:
-                    file.write(f"{point[0]} {point[1]}\n")
+    ## Loading and saving profiles from load to save
+    for i in range(n_profiles + n_wingtip_segments - 2):
+        i = i + 1
+        # print(f"i: {i}, profile_name = prof_{i}")
+        try:
+            profile_name = f"prof_{i}"
+            profile_path = Path(profile_load_dir) / f"{profile_name}.dat"
+            # make a copy of this file into the save dir
+            with open(profile_path, "r") as file:
+                lines = file.readlines()
+            with open(Path(profile_save_dir) / f"{profile_name}.dat", "w") as file:
+                for line in lines:
+                    file.write(line)
+        except:
+            pass
 
-        ## Assuming things decrease linearly
-        def linear_decrease(parameter):
-            return np.linspace(
-                profile_outer_rib[parameter], profile_tip[parameter], n_wingtip_segments
-            )
+    # ## Do the process seperately for the last profile
+    profile_name_initial_tip = f"prof_{n_profiles}"
+    profile_name_last = f"prof_{n_profiles+n_wingtip_segments-1}"
+    print(f"    profile_name_initial_tip: {profile_name_initial_tip}")
+    print(f"    profile_name_last: {profile_name_last}")
+    profile_path = Path(profile_load_dir) / f"{profile_name_initial_tip}.dat"
+    # make a copy of this file into the save dir
+    with open(profile_path, "r") as file:
+        lines = file.readlines()
+    with open(Path(profile_save_dir) / f"{profile_name_last}.dat", "w") as file:
+        for line in lines:
+            file.write(line)
 
-        x_max_camber_list = linear_decrease("x_max_camber")
-        y_max_camber_list = linear_decrease("y_max_camber")
-        TE_angle_list = linear_decrease("TE_angle")
-
-        tube_diam_outer_rib = le_tube[-2]
-        tube_diam_tip = le_tube[-1]
-        tube_diam_list = np.linspace(
-            tube_diam_outer_rib, tube_diam_tip, n_wingtip_segments
-        ) / np.array(chord_len_list)
-        chord_list = chord_len_list
-        ## Assuming polar_data decreases linearly
-        if airfoil_input_type == "polar_data":
-            polar_data_outer_rib = read_airfoil_polar_data(
-                airfoil_input_type, kite_dir_path, f"prof_{int(n_profiles-1)}"
-            )
-            polar_data_tip = read_airfoil_polar_data(
-                airfoil_input_type, kite_dir_path, f"prof_{n_profiles}"
-            )
-            polar_data_list = []
-            # Perform linear interpolation for each segment
-            for alpha in np.linspace(0, 1, n_wingtip_segments):
-                interpolated_data = (
-                    1 - alpha
-                ) * polar_data_outer_rib + alpha * polar_data_tip
-                polar_data_list.append(interpolated_data)
-        elif airfoil_input_type == "lei_airfoil_breukels":
-            polar_data_list = [None for i in range(n_wingtip_segments)]
-        else:
-            raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
-
-        ## Make lists for all ribs from left wing tip to right wing tip
-        left_wing_tip_additions = []
-        for i, (
-            le_i,
-            te_i,
-            d_tube_i,
-            x_max_camber_i,
-            y_max_camber_i,
-            polar_data_i,
-            TE_angle_i,
-            chord_i,
-        ) in enumerate(
-            zip(
-                le_list[::-1],
-                te_list[::-1],
-                tube_diam_list[::-1],
-                x_max_camber_list[::-1],
-                y_max_camber_list[::-1],
-                polar_data_list[::-1],
-                TE_angle_list[::-1],
-                chord_list[::-1],
-            )
-        ):
-
-            left_wing_tip_additions.append(
-                {
-                    "LE": le_i,
-                    "TE": te_i,
-                    "d_tube": d_tube_i,
-                    "x_max_camber": x_max_camber_i,
-                    "y_max_camber": y_max_camber_i,
-                    "polar_data": polar_data_i,
-                    "is_strut": False,
-                    "TE_angle": TE_angle_i,
-                    "chord": chord_i,
-                }
-            )
-        # excluding the tips as the LEs are wrong
-        middle_data_non_wing_tip = ribs_data[1:-1]
-        right_wing_tip_additions = []
-        for i, (
-            le_i,
-            te_i,
-            d_tube_i,
-            x_max_camber_i,
-            y_max_camber_i,
-            polar_data_i,
-            TE_angle_i,
-            chord_i,
-        ) in enumerate(
-            zip(
-                le_list,
-                te_list,
-                tube_diam_list,
-                x_max_camber_list,
-                y_max_camber_list,
-                polar_data_list,
-                TE_angle_list,
-                chord_list,
-            )
-        ):
-
-            right_wing_tip_additions.append(
-                {
-                    "LE": np.array([-le_i[0], le_i[1], le_i[2]]),
-                    "TE": np.array([-te_i[0], te_i[1], te_i[2]]),
-                    "d_tube": d_tube_i,
-                    "x_max_camber": x_max_camber_i,
-                    "y_max_camber": y_max_camber_i,
-                    "polar_data": polar_data_i,
-                    "is_strut": False,
-                    "TE_angle": TE_angle_i,
-                    "chord": chord_i,
-                }
-            )
-        ## concetanating the ribs data
-        ribs_data = np.concatenate(
-            [
-                left_wing_tip_additions,
-                middle_data_non_wing_tip,
-                right_wing_tip_additions,
-            ]
+    if is_make_plots:
+        plot_and_save_all_profiles(
+            profile_save_dir,
+            ribs_data,
         )
 
-    bridle_lines = read_bridle_lines(filepath)
+    bridle_lines = read_bridle_lines(surfplan_txt_file_path)
+
     return ribs_data, bridle_lines
 
 
@@ -539,23 +618,16 @@ if __name__ == "__main__":
     # filepath = Path(PROJECT_DIR) / "data" / "default_kite" / "default_kite_3d.txt"
     # ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
 
-    filepath = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "TUDELFT_V3_KITE_3d.txt"
-    # ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
-
-    # for i, rib in enumerate(ribs_data[0]):
-    #     # print(rib)
-    #     if i < 18:
-    #         print(
-    #             f"i:{i+1} -- d_tube: {rib['d_tube']:.4f}, x_max_camber: {rib['x_max_camber']:.4f}, y_max_camber: {rib['y_max_camber']:.4f},  chord: {rib['chord']:.4f}, TE_angle: {rib['TE_angle']:.4f}"
-    #         )
-
-    from SurfplanAdapter.plotting import plot_and_save_all_profiles
-
-    plot_and_save_all_profiles(
-        Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "new_profiles",
-        surfplan_txt_file_path=filepath,
+    surfplan_txt_file_path = (
+        Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "TUDELFT_V3_KITE_3d.txt"
     )
-
-    # bridle_lines = read_bridle_lines(filepath)
-    # for bridle_line in bridle_lines:
-    # print(bridle_line)
+    profile_load_dir = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "profiles"
+    profile_save_dir = (
+        Path(PROJECT_DIR) / "processed_data" / "TUDELFT_V3_KITE" / "profiles"
+    )
+    ribs_data, bridle_lines = main(
+        surfplan_txt_file_path=surfplan_txt_file_path,
+        profile_load_dir=profile_load_dir,
+        profile_save_dir=profile_save_dir,
+        is_make_plots=True,
+    )

@@ -6,9 +6,9 @@ from SurfplanAdapter.generate_vsm_input import generate_VSM_input
 if __name__ == "__main__":
 
     ### User inputs
-    data_folder_name = "TUDELFT_V3_LEI_KITE"
-    kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
-    kite_name = "TUDELFT_V3_LEI_KITE"
+    data_folder_name = "TUDELFT_V3_KITE"
+    kite_file_name = "TUDELFT_V3_KITE_3d"
+    kite_name = "TUDELFT_V3_KITE"
 
     ## Creating Paths
     path_surfplan_file = (

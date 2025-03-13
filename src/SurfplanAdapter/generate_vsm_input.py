@@ -4,16 +4,13 @@ import numpy as np
 import csv
 
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter.surfplan_to_vsm.read_surfplan_txt import (
-    read_surfplan_txt,
-)
-from SurfplanAdapter.surfplan_to_vsm.transform_coordinate_system_surfplan_to_VSM import (
+from SurfplanAdapter.process_surfplan import main_process_surfplan
+from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
-from SurfplanAdapter.plotting import plot_and_save_all_profiles
 from VSM.WingGeometry import Wing
 from VSM.plotting import plot_geometry
-from VSM.WingAerodynamics import WingAerodynamics
+from VSM.BodyAerodynamics import BodyAerodynamics
 
 
 def sort_ribs_by_proximity(ribs_data):
@@ -168,9 +165,15 @@ def generate_VSM_input(
                         can be: 'split_provided', 'unchanged', 'linear', 'cosine'
 
     Returns:
-        None: This function return an instance of WingAerodynamics which represent the wing described by the txt file
+        None: This function return an instance of BodyAerodynamics which represent the wing described by the txt file
     """
-    ribs_data, bridle_lines = read_surfplan_txt(path_surfplan_file, airfoil_input_type)
+    ribs_data, bridle_lines = main_process_surfplan.main(
+        surfplan_txt_file_path=path_surfplan_file,
+        profile_load_dir=None,
+        profile_save_dir=None,
+        is_make_plots=True,
+        airfoil_input_type=airfoil_input_type,
+    )
     if len(bridle_lines) > 0:
         is_with_bridle_lines = True
         bridle_lines = [
@@ -183,11 +186,7 @@ def generate_VSM_input(
         ]
     else:
         is_with_bridle_lines = False
-    # Saving all the airfoil plots
-    data_folder = Path(path_surfplan_file).parent
-    profile_folder = data_folder.joinpath("profiles")
-    if data_folder.joinpath("profiles").exists():
-        plot_and_save_all_profiles(profile_folder)
+
     # Sorting ribs data
     ribs_data = sort_ribs_by_proximity(ribs_data)
 
@@ -234,8 +233,8 @@ def generate_VSM_input(
 
 if __name__ == "__main__":
 
-    data_folder_name = "TUDELFT_V3_LEI_KITE"
-    kite_file_name = "TUDELFT_V3_LEI_KITE_3d"
+    data_folder_name = "TUDELFT_V3_KITE"
+    kite_file_name = "TUDELFT_V3_KITE_3d"
     path_surfplan_file = (
         Path(PROJECT_DIR) / "data" / f"{data_folder_name}" / f"{kite_file_name}.txt"
     )
@@ -249,7 +248,7 @@ if __name__ == "__main__":
         is_save=True,
         dir_to_save_in=dir_to_save_in,
     )
-    wing_aero = WingAerodynamics([wing])
+    wing_aero = BodyAerodynamics([wing])
 
     # setting arbitrary flow conditions
     # 3. Set the flow conditions
