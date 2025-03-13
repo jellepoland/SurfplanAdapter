@@ -177,7 +177,7 @@ def generate_VSM_input(
             [
                 transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),
                 transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),
-                bridle_line[2],
+                bridle_line[2] / 1e3,  # Convert from mm to m
             ]
             for bridle_line in bridle_lines
         ]
