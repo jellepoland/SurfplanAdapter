@@ -465,7 +465,7 @@ def correcting_wingtip_by_adding_ribs(
             right_wing_tip_additions,
         ]
     )
-    return ribs_data
+    return ribs_data, polar_data_list
 
 
 def main(
@@ -474,6 +474,7 @@ def main(
     profile_save_dir: Path,
     is_make_plots: bool = False,
     airfoil_input_type: str = "lei_airfoil_breukels",
+    polar_save_dir: Path = None,
 ):
     """Read the data from a Surfplan .txt file and return the ribs' data and bridle lines.
 
@@ -563,7 +564,7 @@ def main(
     n_profiles = int(n_ribs // 2)
     ## ADDING WINGTIPS, if described in surfplan txt export file
     if len(wingtip) > 0:
-        ribs_data = correcting_wingtip_by_adding_ribs(
+        ribs_data, polar_data_list = correcting_wingtip_by_adding_ribs(
             wingtip,
             n_wingtip_segments,
             profile_save_dir,
@@ -574,42 +575,105 @@ def main(
             ribs_data,
         )
 
-    ## Loading and saving profiles from load to save
-    for i in range(n_profiles + n_wingtip_segments - 2):
-        i = i + 1
-        # print(f"i: {i}, profile_name = prof_{i}")
-        try:
-            profile_name = f"prof_{i}"
-            profile_path = Path(profile_load_dir) / f"{profile_name}.dat"
-            # make a copy of this file into the save dir
-            with open(profile_path, "r") as file:
-                lines = file.readlines()
-            with open(Path(profile_save_dir) / f"{profile_name}.dat", "w") as file:
-                for line in lines:
-                    file.write(line)
-        except:
-            pass
+        ## Loading and saving profiles from load to save
+        for i in range(n_profiles + n_wingtip_segments - 2):
+            i = i + 1
+            # print(f"i: {i}, profile_name = prof_{i}")
+            try:
+                profile_name = f"prof_{i}"
+                profile_path = Path(profile_load_dir) / f"{profile_name}.dat"
+                # make a copy of this file into the save dir
+                with open(profile_path, "r") as file:
+                    lines = file.readlines()
+                with open(Path(profile_save_dir) / f"{profile_name}.dat", "w") as file:
+                    for line in lines:
+                        file.write(line)
+            except:
+                pass
 
-    # ## Do the process seperately for the last profile
-    profile_name_initial_tip = f"prof_{n_profiles}"
-    profile_name_last = f"prof_{n_profiles+n_wingtip_segments-1}"
-    print(f"    profile_name_initial_tip: {profile_name_initial_tip}")
-    print(f"    profile_name_last: {profile_name_last}")
-    profile_path = Path(profile_load_dir) / f"{profile_name_initial_tip}.dat"
-    # make a copy of this file into the save dir
-    with open(profile_path, "r") as file:
-        lines = file.readlines()
-    with open(Path(profile_save_dir) / f"{profile_name_last}.dat", "w") as file:
-        for line in lines:
-            file.write(line)
+        # ## Do the process seperately for the last profile
+        profile_name_initial_tip = f"prof_{n_profiles}"
+        profile_name_last = f"prof_{n_profiles+n_wingtip_segments-1}"
+        print(f"    profile_name_initial_tip: {profile_name_initial_tip}")
+        print(f"    profile_name_last: {profile_name_last}")
+        profile_path = Path(profile_load_dir) / f"{profile_name_initial_tip}.dat"
+        # make a copy of this file into the save dir
+        with open(profile_path, "r") as file:
+            lines = file.readlines()
+        with open(Path(profile_save_dir) / f"{profile_name_last}.dat", "w") as file:
+            for line in lines:
+                file.write(line)
 
-    if is_make_plots:
-        plot_and_save_all_profiles(
-            profile_save_dir,
-            ribs_data,
-        )
+        if is_make_plots:
+            plot_and_save_all_profiles(
+                profile_save_dir,
+                ribs_data,
+            )
+
+        # polar data
+        if airfoil_input_type == "polar_data":
+            if not polar_save_dir.is_dir():
+                polar_save_dir.mkdir(parents=True, exist_ok=True)
+            idx = 0
+            for i in range(n_profiles + n_wingtip_segments - 1):
+                if i < (n_profiles - 1):
+                    polar_data_i = (
+                        Path(kite_dir_path) / "polar_data" / f"prof_{i+1}_polar.csv"
+                    )
+                    df_i = pd.read_csv(polar_data_i, index_col=False)
+                    df_i["alpha"] = df_i["aoa"]
+                    df_i.drop(columns=["aoa"], inplace=True)
+                    df_i.to_csv(
+                        polar_save_dir / f"corrected_polar_{i}.csv",
+                        index=False,
+                        sep=",",
+                    )
+                elif i >= (n_profiles - 1):
+                    polar_data_i = polar_data_list[idx]
+                    df_i = pd.DataFrame(
+                        {
+                            "alpha": np.rad2deg(polar_data_i[0]),
+                            "cl": polar_data_i[1],
+                            "cd": polar_data_i[2],
+                            "cm": polar_data_i[3],
+                        }
+                    )
+                    df_i.to_csv(
+                        polar_save_dir / f"corrected_polar_{i}.csv",
+                        index=False,
+                        sep=",",
+                    )
+                    idx += 1
+                else:
+                    polar_data_i = (
+                        Path(kite_dir_path)
+                        / "polar_data"
+                        / f"prof_{n_profiles}_polar.csv"
+                    )
+                    df_i = pd.read_csv(polar_data_i, index_col=False)
+                    df_i["alpha"] = df_i["aoa"]
+                    df_i.drop(columns=["aoa"], inplace=True)
+                    df_i.to_csv(
+                        polar_save_dir / f"corrected_polar_{i}.csv",
+                        index=False,
+                        sep=",",
+                    )
+
+            n_ribs = len(ribs_data)
+            idx_rib = n_ribs - 1
+            for i in range(n_profiles + n_wingtip_segments - 2):
+                i = i + 1
+                path_i = polar_save_dir / f"prof_{i}_polar.csv"
+                df_i = pd.read_csv(path_i, index_col=False)
+                df_i.to_csv(
+                    polar_save_dir / f"corrected_polar_{idx_rib}.csv", index=False
+                )
+                idx_rib -= 1
 
     bridle_lines = read_bridle_lines(surfplan_txt_file_path)
+
+    # print("ribs_data: ", ribs_data)
+    print(f"len(ribs_data): {len(ribs_data)}")
 
     return ribs_data, bridle_lines
 
@@ -632,4 +696,9 @@ if __name__ == "__main__":
         profile_load_dir=profile_load_dir,
         profile_save_dir=profile_save_dir,
         is_make_plots=True,
+        airfoil_input_type="polar_data",
+        polar_save_dir=Path(PROJECT_DIR)
+        / "processed_data"
+        / "TUDELFT_V3_KITE"
+        / "polar_data",
     )
