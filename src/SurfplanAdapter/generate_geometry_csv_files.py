@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import numpy as np
 import csv
+import pandas as pd
 
 from SurfplanAdapter.utils import PROJECT_DIR
 from SurfplanAdapter.process_surfplan import main_process_surfplan
@@ -67,55 +68,6 @@ def sort_ribs_by_proximity(ribs_data):
     return sorted_ribs_data
 
 
-def saving_wing_geometry(
-    save_dir,
-    row_input_list,
-    is_strut_list,
-    airfoil_input_type,
-):
-    if airfoil_input_type != "lei_airfoil_breukels":
-        raise ValueError(
-            f"Current airfoil_input_type: {airfoil_input_type} can't be saved yet."
-        )
-    path_to_save_geometry = Path(save_dir) / "wing_geometry.csv"
-    if path_to_save_geometry is None:
-        raise ValueError("You must provide a csv_file_path.")
-    if not os.path.exists(path_to_save_geometry):
-        os.makedirs(os.path.dirname(path_to_save_geometry), exist_ok=True)
-
-    with open(path_to_save_geometry, "w", newline="") as f:
-        writer = csv.writer(f)
-        # Write the header
-        writer.writerow(
-            [
-                "LE_x",
-                "LE_y",
-                "LE_z",
-                "TE_x",
-                "TE_y",
-                "TE_z",
-                "d_tube",
-                "camber",
-                "is_strut",
-            ]
-        )
-        # Write the data for each rib
-        for row, is_strut in zip(row_input_list, is_strut_list):
-            writer.writerow(
-                [
-                    row[0][0],
-                    row[0][1],
-                    row[0][2],
-                    row[1][0],
-                    row[1][1],
-                    row[1][2],
-                    row[2][1][0],
-                    row[2][1][1],
-                    is_strut,
-                ]
-            )
-
-
 def saving_bridle_lines(bridle_lines, save_dir):
     file_path = Path(save_dir) / "bridle_lines.csv"
     # Now, write the data to a CSV file
@@ -151,7 +103,6 @@ def main(
     save_dir: Path,
     profile_load_dir: Path,
     profile_save_dir: Path,
-    airfoil_input_type: str = "lei_airfoil_breukels",
 ):
     """
     Generate Input for the Vortex Step Method
@@ -171,7 +122,6 @@ def main(
         profile_load_dir=profile_load_dir,
         profile_save_dir=profile_save_dir,
         is_make_plots=True,
-        airfoil_input_type=airfoil_input_type,
     )
     if len(bridle_lines) > 0:
         is_with_bridle_lines = True
@@ -189,34 +139,69 @@ def main(
     # Sorting ribs data
     ribs_data = sort_ribs_by_proximity(ribs_data)
 
-    # Create wing geometry
-    row_input_list = []
-    is_strut_list = []
-    for rib in ribs_data:
-        LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
-        TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
-        if airfoil_input_type == "lei_airfoil_breukels":
-            polar_data = [
-                "lei_airfoil_breukels",
-                [rib["d_tube"], rib["y_max_camber"]],
-            ]
-            is_strut_list.append(rib["is_strut"])
-        elif airfoil_input_type == "polar_data":
-            polar_data = ["polar_data", rib["polar_data"]]
-        else:
-            raise ValueError(
-                f"current airfoil_input_type: {airfoil_input_type} is not recognized, change string value"
-            )
-        row_input_list.append(
-            [
-                LE,
-                TE,
-                polar_data,
-            ]
-        )
+    # Loading profile_parameters
+    df_profiles = pd.read_csv(
+        profile_save_dir / "profile_parameters.csv", index_col="profile_number"
+    )
 
     # Save wing geometry in a csv file
-    saving_wing_geometry(save_dir, row_input_list, is_strut_list, airfoil_input_type)
+    path_to_save_geometry = Path(save_dir) / "wing_geometry.csv"
+    if not os.path.exists(path_to_save_geometry):
+        os.makedirs(os.path.dirname(path_to_save_geometry), exist_ok=True)
+
+    n_ribs = len(ribs_data)
+    n_profiles = len(df_profiles)
+    print(f"n_ribs: {n_ribs}, n_profiles: {n_profiles}")
+    with open(path_to_save_geometry, "w", newline="") as f:
+        writer = csv.writer(f)
+        # Write the header
+        writer.writerow(
+            [
+                "LE_x",
+                "LE_y",
+                "LE_z",
+                "TE_x",
+                "TE_y",
+                "TE_z",
+                "is_strut",
+                "profile_number",
+                "t",
+                "eta",
+                "kappa",
+                "delta",
+                "c",
+            ]
+        )
+        for i, rib in enumerate(ribs_data):
+            LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
+            TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
+
+            # read row of df_profiles
+            if i < (n_profiles):
+                idx = i
+            elif i == n_profiles:
+                idx = n_profiles - 1
+            else:
+                idx = n_ribs - (i + 1)
+            profile_i = df_profiles.iloc[idx]
+
+            writer.writerow(
+                [
+                    LE[0],
+                    LE[1],
+                    LE[2],
+                    TE[0],
+                    TE[1],
+                    TE[2],
+                    rib["is_strut"],
+                    profile_i["profile_name"],
+                    profile_i["t"],
+                    profile_i["eta"],
+                    profile_i["kappa"],
+                    profile_i["delta"],
+                    profile_i["c"],
+                ]
+            )
 
     if is_with_bridle_lines:
         saving_bridle_lines(bridle_lines, save_dir)

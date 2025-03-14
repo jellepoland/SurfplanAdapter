@@ -16,5 +16,4 @@ if __name__ == "__main__":
         save_dir=save_dir,
         profile_load_dir=Path(data_dir) / "profiles",
         profile_save_dir=Path(save_dir) / "profiles",
-        airfoil_input_type="lei_airfoil_breukels",
     )

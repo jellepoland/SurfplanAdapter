@@ -16,7 +16,7 @@ data_folder_name = "TUDELFT_V3_KITE"
 reference_point_for_moment_calculation = [0.910001, -4.099458, 0.052295]
 n_panels = 100
 spanwise_panel_distribution = "uniform"
-va = np.array([10, 0, 0])
+va = np.array([10, 3, 0])
 alpha = 6.75
 beta_s = 0
 yaw_rate = 0
@@ -27,7 +27,7 @@ wing_instance = Wing(n_panels, spanwise_panel_distribution)
 body_aero_polar_with_bridles = BodyAerodynamics.from_file(
     wing_instance,
     file_path=Path(load_dir) / "wing_geometry.csv",
-    is_with_corrected_polar=True,
+    is_with_corrected_polar=False,
     path_polar_data_dir=Path(load_dir) / "polar_data",
     is_with_bridles=True,
     path_bridle_data=Path(load_dir) / "bridle_lines.csv",
