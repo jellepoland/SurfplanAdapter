@@ -8,30 +8,6 @@ from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import
 from SurfplanAdapter.plotting import plot_and_save_all_profiles
 
 
-def read_airfoil_polar_data(
-    airfoil_input_type: str, kite_dir_path: Path, profile_name: str
-):
-    if airfoil_input_type == "lei_airfoil_breukels":
-        polar_data_i = None
-        return polar_data_i
-    elif airfoil_input_type == "polar_data":
-        polar_data_i_path = (
-            Path(kite_dir_path) / "polar_data" / f"{profile_name}_polar.csv"
-        )
-        df_polar_data = pd.read_csv(polar_data_i_path, sep=";")
-        polar_data_i = np.array(
-            [
-                [np.deg2rad(alpha_i) for alpha_i in df_polar_data["aoa"].values],
-                df_polar_data["cl"].values,
-                df_polar_data["cd"].values,
-                df_polar_data["cm"].values,
-            ]
-        )
-        return polar_data_i
-    else:
-        raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
-
-
 def line_parser(line):
     """
     Parse a line from the .txt file from Surfplan.
@@ -308,7 +284,6 @@ def correcting_wingtip_by_adding_ribs(
     n_wingtip_segments,
     profile_save_dir,
     le_tube,
-    airfoil_input_type,
     kite_dir_path,
     n_profiles,
     ribs_data,
@@ -362,26 +337,6 @@ def correcting_wingtip_by_adding_ribs(
     ) / np.array(chord_len_list)
     chord_list = chord_len_list
 
-    ## Assuming polar_data decreases linearly
-    if airfoil_input_type == "polar_data":
-        polar_data_outer_rib = read_airfoil_polar_data(
-            airfoil_input_type, kite_dir_path, f"prof_{int(n_profiles-1)}"
-        )
-        polar_data_tip = read_airfoil_polar_data(
-            airfoil_input_type, kite_dir_path, f"prof_{n_profiles}"
-        )
-        polar_data_list = []
-        # Perform linear interpolation for each segment
-        for alpha in np.linspace(0, 1, n_wingtip_segments):
-            interpolated_data = (
-                1 - alpha
-            ) * polar_data_outer_rib + alpha * polar_data_tip
-            polar_data_list.append(interpolated_data)
-    elif airfoil_input_type == "lei_airfoil_breukels":
-        polar_data_list = [None for i in range(n_wingtip_segments)]
-    else:
-        raise ValueError(f"airfoil_input_type {airfoil_input_type} not recognized")
-
     ## Make lists for all ribs from left wing tip to right wing tip
     left_wing_tip_additions = []
     for i, (
@@ -390,7 +345,6 @@ def correcting_wingtip_by_adding_ribs(
         d_tube_i,
         x_max_camber_i,
         y_max_camber_i,
-        polar_data_i,
         TE_angle_i,
         chord_i,
     ) in enumerate(
@@ -400,7 +354,6 @@ def correcting_wingtip_by_adding_ribs(
             tube_diam_list[::-1],
             x_max_camber_list[::-1],
             y_max_camber_list[::-1],
-            polar_data_list[::-1],
             TE_angle_list[::-1],
             chord_list[::-1],
         )
@@ -413,7 +366,6 @@ def correcting_wingtip_by_adding_ribs(
                 "d_tube": d_tube_i,
                 "x_max_camber": x_max_camber_i,
                 "y_max_camber": y_max_camber_i,
-                "polar_data": polar_data_i,
                 "is_strut": False,
                 "TE_angle": TE_angle_i,
                 "chord": chord_i,
@@ -428,7 +380,6 @@ def correcting_wingtip_by_adding_ribs(
         d_tube_i,
         x_max_camber_i,
         y_max_camber_i,
-        polar_data_i,
         TE_angle_i,
         chord_i,
     ) in enumerate(
@@ -438,7 +389,6 @@ def correcting_wingtip_by_adding_ribs(
             tube_diam_list,
             x_max_camber_list,
             y_max_camber_list,
-            polar_data_list,
             TE_angle_list,
             chord_list,
         )
@@ -451,7 +401,6 @@ def correcting_wingtip_by_adding_ribs(
                 "d_tube": d_tube_i,
                 "x_max_camber": x_max_camber_i,
                 "y_max_camber": y_max_camber_i,
-                "polar_data": polar_data_i,
                 "is_strut": False,
                 "TE_angle": TE_angle_i,
                 "chord": chord_i,
@@ -465,7 +414,7 @@ def correcting_wingtip_by_adding_ribs(
             right_wing_tip_additions,
         ]
     )
-    return ribs_data, polar_data_list
+    return ribs_data
 
 
 def main(
@@ -473,8 +422,6 @@ def main(
     profile_load_dir: Path,
     profile_save_dir: Path,
     is_make_plots: bool = False,
-    airfoil_input_type: str = "lei_airfoil_breukels",
-    polar_save_dir: Path = None,
 ):
     """Read the data from a Surfplan .txt file and return the ribs' data and bridle lines.
 
@@ -530,10 +477,6 @@ def main(
         x_max_camber = airfoil["x_max_camber"]
         y_max_camber = airfoil["y_max_camber"]
         TE_angle = airfoil["TE_angle"]
-        # It's possible to add here more airfoil parameters to read in the dat file for more complete airfoil data
-        polar_data_i = read_airfoil_polar_data(
-            airfoil_input_type, kite_dir_path, profile_name
-        )
 
         # Non-dimensionalize by chord
         chord_i = np.linalg.norm(rib_te - rib_le)
@@ -554,7 +497,6 @@ def main(
                 "d_tube": tube_diameter_i,
                 "x_max_camber": x_max_camber,
                 "y_max_camber": y_max_camber,
-                "polar_data": polar_data_i,
                 "is_strut": is_strut,
                 "TE_angle": TE_angle,
                 "chord": chord_i,
@@ -564,12 +506,11 @@ def main(
     n_profiles = int(n_ribs // 2)
     ## ADDING WINGTIPS, if described in surfplan txt export file
     if len(wingtip) > 0:
-        ribs_data, polar_data_list = correcting_wingtip_by_adding_ribs(
+        ribs_data = correcting_wingtip_by_adding_ribs(
             wingtip,
             n_wingtip_segments,
             profile_save_dir,
             le_tube,
-            airfoil_input_type,
             kite_dir_path,
             n_profiles,
             ribs_data,
@@ -610,66 +551,6 @@ def main(
                 ribs_data,
             )
 
-        # polar data
-        if airfoil_input_type == "polar_data":
-            if not polar_save_dir.is_dir():
-                polar_save_dir.mkdir(parents=True, exist_ok=True)
-            idx = 0
-            for i in range(n_profiles + n_wingtip_segments - 1):
-                if i < (n_profiles - 1):
-                    polar_data_i = (
-                        Path(kite_dir_path) / "polar_data" / f"prof_{i+1}_polar.csv"
-                    )
-                    df_i = pd.read_csv(polar_data_i, index_col=False)
-                    df_i["alpha"] = df_i["aoa"]
-                    df_i.drop(columns=["aoa"], inplace=True)
-                    df_i.to_csv(
-                        polar_save_dir / f"corrected_polar_{i}.csv",
-                        index=False,
-                        sep=",",
-                    )
-                elif i >= (n_profiles - 1):
-                    polar_data_i = polar_data_list[idx]
-                    df_i = pd.DataFrame(
-                        {
-                            "alpha": np.rad2deg(polar_data_i[0]),
-                            "cl": polar_data_i[1],
-                            "cd": polar_data_i[2],
-                            "cm": polar_data_i[3],
-                        }
-                    )
-                    df_i.to_csv(
-                        polar_save_dir / f"corrected_polar_{i}.csv",
-                        index=False,
-                        sep=",",
-                    )
-                    idx += 1
-                else:
-                    polar_data_i = (
-                        Path(kite_dir_path)
-                        / "polar_data"
-                        / f"prof_{n_profiles}_polar.csv"
-                    )
-                    df_i = pd.read_csv(polar_data_i, index_col=False)
-                    df_i["alpha"] = df_i["aoa"]
-                    df_i.drop(columns=["aoa"], inplace=True)
-                    df_i.to_csv(
-                        polar_save_dir / f"corrected_polar_{i}.csv",
-                        index=False,
-                        sep=",",
-                    )
-
-            n_ribs = len(ribs_data)
-            idx_rib = n_ribs - 1
-            for i in range(n_profiles + n_wingtip_segments - 2):
-                i = i + 1
-                path_i = polar_save_dir / f"prof_{i}_polar.csv"
-                df_i = pd.read_csv(path_i, index_col=False)
-                df_i.to_csv(
-                    polar_save_dir / f"corrected_polar_{idx_rib}.csv", index=False
-                )
-                idx_rib -= 1
-
     bridle_lines = read_bridle_lines(surfplan_txt_file_path)
 
     # print("ribs_data: ", ribs_data)
@@ -696,9 +577,4 @@ if __name__ == "__main__":
         profile_load_dir=profile_load_dir,
         profile_save_dir=profile_save_dir,
         is_make_plots=True,
-        airfoil_input_type="polar_data",
-        polar_save_dir=Path(PROJECT_DIR)
-        / "processed_data"
-        / "TUDELFT_V3_KITE"
-        / "polar_data",
     )
