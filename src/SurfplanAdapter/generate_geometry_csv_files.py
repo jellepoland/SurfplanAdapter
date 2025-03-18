@@ -165,11 +165,11 @@ def main(
                 "TE_z",
                 "is_strut",
                 "profile_number",
-                "t",
-                "eta",
-                "kappa",
-                "delta",
-                "c",
+                "d_tube",
+                "x_camber",
+                "camber",
+                "delta_te_angle",
+                "chord",
             ]
         )
         for i, rib in enumerate(ribs_data):
