@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ## Create geometry file once
     geometry_file_path = Path(dir_to_save_in) / "wing_geometry.csv"
     if not geometry_file_path.exists():
-        wing_aero_breukels = generate_VSM_input.main(
+        wing_aero_breukels = generate_geometry_csv_files.main(
             path_surfplan_file=path_surfplan_file,
             n_panels=30,
             spanwise_panel_distribution="unchanged",
