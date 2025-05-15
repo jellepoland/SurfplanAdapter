@@ -1,29 +1,37 @@
-# User defined files and folders
-data/
+# Ignore everything in the data, processed_data, and results directories
+/data/*
+/processed_data/*
+/results/*
+/examples/*
+
+# Ignore everything in the data, processed_data, and results directories
+/data/*
+/processed_data/*
+/results/*
+/examples/*
+
+# Explicitly include parent directories for specific subdirectories
+!data/
 !data/default_kite/
-!data/default_kite/*
-!data/default_kite/*/*
-!data/TUDELFT_V3_LEI_KITE/
-!data/TUDELFT_V3_LEI_KITE/*
-!data/TUDELFT_V3_LEI_KITE/*/*
+!data/default_kite/polar_data/
+!data/default_kite/profiles/
 
-processed_data/
+!data/TUDELFT_V3_KITE/
+!data/TUDELFT_V3_KITE/polar_data/
+!data/TUDELFT_V3_KITE/profiles/
+
+!processed_data/
 !processed_data/default_kite/
-!processed_data/default_kite/*
-!processed_data/default_kite/*/*
-!processed_data/TUDELFT_V3_LEI_KITE/
-!processed_data/TUDELFT_V3_LEI_KITE/*
-!processed_data/TUDELFT_V3_LEI_KITE/*/*
+!processed_data/TUDELFT_V3_KITE/
 
-results/
+
+!results/
 !results/default_kite/
-!results/default_kite/*
-!results/default_kite/*/*
-!results/TUDELFT_V3_LEI_KITE/
-!results/TUDELFT_V3_LEI_KITE/*
-!results/TUDELFT_V3_LEI_KITE/*/*
+!results/TUDELFT_V3_KITE/
 
-
+!examples/
+!examples/default_kite/
+!examples/TUDELFT_V3_KITE/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
