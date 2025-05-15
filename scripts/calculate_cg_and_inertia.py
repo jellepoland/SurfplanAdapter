@@ -19,15 +19,15 @@ if __name__ == "__main__":
     ## Create geometry file once
     geometry_file_path = Path(dir_to_save_in) / "wing_geometry.csv"
     if not geometry_file_path.exists():
-        wing_aero_breukels = generate_geometry_csv_files.main(
+        data_dir = Path(PROJECT_DIR) / "data" / f"{data_folder_name}"
+        save_dir = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
+
+        generate_geometry_csv_files.main(
             path_surfplan_file=path_surfplan_file,
-            n_panels=30,
-            spanwise_panel_distribution="unchanged",
-            airfoil_input_type="lei_airfoil_breukels",
-            is_save=True,
-            dir_to_save_in=dir_to_save_in,
+            save_dir=save_dir,
+            profile_load_dir=Path(data_dir) / "profiles",
+            profile_save_dir=Path(save_dir) / "profiles",
         )
-        print(f'Generated geometry file at "{geometry_file_path}"')
 
     file_path = Path(PROJECT_DIR) / "processed_data" / f"{kite_name}" / "geometry.csv"
     total_wing_mass = 10.0

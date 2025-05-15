@@ -167,7 +167,7 @@ def main(
                 "profile_number",
                 "d_tube",
                 "x_camber",
-                "camber",
+                "y_camber",
                 "delta_te_angle",
                 "chord",
             ]
@@ -202,6 +202,8 @@ def main(
                     profile_i["c"],
                 ]
             )
+    print(f'Generated geometry file, and saved at "{path_to_save_geometry}"')
 
     if is_with_bridle_lines:
         saving_bridle_lines(bridle_lines, save_dir)
+        print(f'Generated bridle lines file, and save at "{save_dir}/bridle_lines.csv"')
