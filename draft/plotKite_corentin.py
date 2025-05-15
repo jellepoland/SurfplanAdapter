@@ -271,11 +271,14 @@ def plot_data(rib_data, le_tube_data, struts_data, bridle_data):
     plt.show()
 
 
+from SurfplanAdapter.utils import PROJECT_DIR
+from pathlib import Path
+
 # Usage
 # Initialize Kite instance
 kite = Kite()
 # Read the data from the file
-filename = "data/default_kite/default_kite_3d.txt"
+filename = Path(PROJECT_DIR) / "data/default_kite/default_kite_3d.txt"
 # filename = 'test_cases/Seakite50_VH/SK50-VH_3d.txt'
 kite.read_from_txt(filename)
 

@@ -22,20 +22,30 @@ yaw_rate = 0
 
 
 load_dir = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
+
+# body_aero_breukels = BodyAerodynamics.from_file(
+#     file_path,
+#     n_panels,
+#     spanwise_panel_distribution,
+#     is_with_corrected_polar=False,
+# )
+
 body_aero = BodyAerodynamics.from_file(
-    wing_instance=Wing(n_panels),
     file_path=Path(load_dir) / "wing_geometry.csv",
+    n_panels=n_panels,
+    spanwise_panel_distribution="uniform",
     is_with_corrected_polar=False,
-    path_polar_data_dir=Path(load_dir) / "polar_data",
+    polar_data_dir=Path(load_dir) / "polar_data",
     is_with_bridles=False,
 )
 body_aero_polar_with_bridles = BodyAerodynamics.from_file(
-    wing_instance=Wing(n_panels),
     file_path=Path(load_dir) / "wing_geometry.csv",
+    n_panels=n_panels,
+    spanwise_panel_distribution="uniform",
     is_with_corrected_polar=False,
-    path_polar_data_dir=Path(load_dir) / "polar_data",
+    polar_data_dir=Path(load_dir) / "polar_data",
     is_with_bridles=True,
-    path_bridle_data=Path(load_dir) / "bridle_lines.csv",
+    bridle_data_path=Path(load_dir) / "bridle_lines.csv",
 )
 body_aero.va_initialize(va_norm, alpha, beta_s, yaw_rate)
 body_aero_polar_with_bridles.va_initialize(va_norm, alpha, beta_s, yaw_rate)
@@ -67,20 +77,6 @@ interactive_plot(
 # x (+) downstream, y(+) left and z(+) upwards reference frame
 solver = Solver()
 
-### plotting distributions
-result = solver.solve(body_aero)
-result_bridles = solver.solve(body_aero_polar_with_bridles)
-y_coords = [panel.aerodynamic_center[1] for panel in body_aero.panels]
-plotting.plot_distribution(
-    y_coordinates_list=[y_coords, y_coords],
-    results_list=[result, result_bridles],
-    label_list=["Wing", "Wing with Bridles"],
-    title=f"spanwise_distributions for aoa:{np.rad2deg(alpha):.1f} [deg]",
-    data_type=".pdf",
-    save_path=None,
-    is_save=False,
-    is_show=True,
-)
 
 ### plotting polar
 plotting.plot_polars(
@@ -116,4 +112,20 @@ plotting.plot_polars(
     save_path=None,
     is_save=False,
     is_show=True,
+)
+### plotting distributions
+plotting.plot_distribution(
+    alpha_list=[5, 10],
+    Umag=va_norm,
+    side_slip=beta_s,
+    yaw_rate=yaw_rate,
+    solver_list=[solver, solver],
+    body_aero_list=[body_aero, body_aero_polar_with_bridles],
+    label_list=["Wing", "Wing with Bridles"],
+    title="spanwise_distribution",
+    data_type=".pdf",
+    save_path=None,
+    is_save=False,
+    is_show=True,
+    run_time_list=None,
 )
