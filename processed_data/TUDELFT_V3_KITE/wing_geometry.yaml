@@ -1,0 +1,230 @@
+wing_sections:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - airfoil_id: integer, unique identifier for the airfoil (matches wing_airfoils)':
+  #   - LE_x: x-coordinate of leading edge':
+  #   - LE_y: y-coordinate of leading edge':
+  #   - LE_z: z-coordinate of leading edge':
+  #   - TE_x: x-coordinate of trailing edge':
+  #   - TE_y: y-coordinate of trailing edge':
+  #   - TE_z: z-coordinate of trailing edge':
+  headers: [airfoil_id, LE_x, LE_y, LE_z, TE_x, TE_y, TE_z]
+  data:
+  - [1, 0.52218, 4.100957, 0.921215, 0.86682, 4.152601, 0.932607]
+  - [2, 0.263184, 4.105533, 0.971623, 0.874727, 4.141856, 0.979216]
+  - [3, 0.028112, 4.099444, 1.049881, 0.887481, 4.124523, 1.054402]
+  - [4, -0.183243, 4.085799, 1.154511, 0.904737, 4.101072, 1.156125]
+  - [5, -0.368472, 4.065552, 1.28343, 0.926149, 4.071974, 1.282342]
+  - [6, -0.522929, 4.039112, 1.43433, 0.951369, 4.0377, 1.431014]
+  - [7, -0.639766, 4.006563, 1.604842, 0.980052, 3.998721, 1.600098]
+  - [8, -0.709238, 3.967978, 1.791356, 1.011852, 3.955506, 1.787553]
+  - [9, -0.79088, 3.80535, 2.209568, 1.189372, 3.789238, 2.199439]
+  - [10, -0.864219, 3.501223, 2.540205, 1.256822, 3.485499, 2.522089]
+  - [11, -0.929298, 3.134335, 2.796493, 1.310901, 3.116753, 2.773988]
+  - [12, -0.986158, 2.7983, 3.092998, 1.354755, 2.780285, 3.065722]
+  - [13, -1.034831, 2.393198, 3.288677, 1.390237, 2.380855, 3.254511]
+  - [14, -1.075348, 1.959729, 3.398648, 1.41853, 1.946587, 3.361473]
+  - [15, -1.107733, 1.553762, 3.587398, 1.440421, 1.540958, 3.547442]
+  - [16, -1.132004, 1.111239, 3.671702, 1.456442, 1.107796, 3.627957]
+  - [17, -1.148177, 0.664252, 3.658834, 1.466944, 0.660721, 3.613797]
+  - [18, -1.156262, 0.225013, 3.741837, 1.472144, 0.220752, 3.696209]
+  - [18, -1.156262, -0.225013, 3.741837, 1.472144, -0.220752, 3.696209]
+  - [17, -1.148177, -0.664252, 3.658834, 1.466944, -0.660721, 3.613797]
+  - [16, -1.132004, -1.111239, 3.671702, 1.456442, -1.107796, 3.627957]
+  - [15, -1.107733, -1.553762, 3.587398, 1.440421, -1.540958, 3.547442]
+  - [14, -1.075348, -1.959729, 3.398648, 1.41853, -1.946587, 3.361473]
+  - [13, -1.034831, -2.393198, 3.288677, 1.390237, -2.380855, 3.254511]
+  - [12, -0.986158, -2.7983, 3.092998, 1.354755, -2.780285, 3.065722]
+  - [11, -0.929298, -3.134335, 2.796493, 1.310901, -3.116753, 2.773988]
+  - [10, -0.864219, -3.501223, 2.540205, 1.256822, -3.485499, 2.522089]
+  - [9, -0.79088, -3.80535, 2.209568, 1.189372, -3.789238, 2.199439]
+  - [8, -0.709238, -3.967978, 1.791356, 1.011852, -3.955506, 1.787553]
+  - [7, -0.639766, -4.006563, 1.604842, 0.980052, -3.998721, 1.600098]
+  - [6, -0.522929, -4.039112, 1.43433, 0.951369, -4.0377, 1.431014]
+  - [5, -0.368472, -4.065552, 1.28343, 0.926149, -4.071974, 1.282342]
+  - [4, -0.183243, -4.085799, 1.154511, 0.904737, -4.101072, 1.156125]
+  - [3, 0.028112, -4.099444, 1.049881, 0.887481, -4.124523, 1.054402]
+  - [2, 0.263184, -4.105533, 0.971623, 0.874727, -4.141856, 0.979216]
+  - [1, 0.52218, -4.100957, 0.921215, 0.86682, -4.152601, 0.932607]
+
+wing_airfoils:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - airfoil_id: integer, unique identifier for the airfoil':
+  #   - type: one of [neuralfoil, breukels_regression, masure_regression, polars]':
+  #   - info_dict: dictionary with parameters depending on ''type''':
+  #':
+  # info_dict fields by type:':
+  #   - breukels_regression:':
+  #       t: Tube diameter non-dimensionalized by chord (required)':
+  #       kappa: Maximum camber height/magnitude, non-dimensionalized by chord (required)':
+  #   - neuralfoil:':
+  #       dat_file_path: Path to airfoil .dat file (x, y columns)':
+  #       model_size: NeuralFoil model size (e.g., "xxxlarge")':
+  #       xtr_lower: Lower transition location (0=forced, 1=free)':
+  #       xtr_upper: Upper transition location':
+  #       n_crit: Critical amplification factor (see guidelines below)':
+  #         n_crit guidelines:':
+  #           Sailplane:           12–14':
+  #           Motorglider:         11–13':
+  #           Clean wind tunnel:   10–12':
+  #           Average wind tunnel: 9   (standard "e^9 method")':
+  #           Dirty wind tunnel:   4–8':
+  #   - polars:':
+  #       csv_file_path: Path to polar CSV file (columns: alpha [rad], cl, cd, cm)':
+  #   - masure_regression:':
+  #       t, eta, kappa, delta, lamba, phi: Regression parameters':
+  #   - inviscid:':
+  #       no further data is required':
+  alpha_range: [-10, 31, 0.5]
+  reynolds: 1000000.0
+  headers: [airfoil_id, type, info_dict]
+  data:
+  - [1, polars, {csv_file_path: 2D_polars_CFD/1.csv}]
+  - [2, polars, {csv_file_path: 2D_polars_CFD/2.csv}]
+  - [3, polars, {csv_file_path: 2D_polars_CFD/3.csv}]
+  - [4, polars, {csv_file_path: 2D_polars_CFD/4.csv}]
+  - [5, polars, {csv_file_path: 2D_polars_CFD/5.csv}]
+  - [6, polars, {csv_file_path: 2D_polars_CFD/6.csv}]
+  - [7, polars, {csv_file_path: 2D_polars_CFD/7.csv}]
+  - [8, polars, {csv_file_path: 2D_polars_CFD/8.csv}]
+  - [9, polars, {csv_file_path: 2D_polars_CFD/9.csv}]
+  - [10, polars, {csv_file_path: 2D_polars_CFD/10.csv}]
+  - [11, polars, {csv_file_path: 2D_polars_CFD/11.csv}]
+  - [12, polars, {csv_file_path: 2D_polars_CFD/12.csv}]
+  - [13, polars, {csv_file_path: 2D_polars_CFD/13.csv}]
+  - [14, polars, {csv_file_path: 2D_polars_CFD/14.csv}]
+  - [15, polars, {csv_file_path: 2D_polars_CFD/15.csv}]
+  - [16, polars, {csv_file_path: 2D_polars_CFD/16.csv}]
+  - [17, polars, {csv_file_path: 2D_polars_CFD/17.csv}]
+  - [18, polars, {csv_file_path: 2D_polars_CFD/18.csv}]
+
+bridle_nodes:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - id: integer, unique identifier for the node':
+  #   - x: x-coordinate [m]':
+  #   - y: y-coordinate [m]':
+  #   - z: z-coordinate [m]':
+  #   - type: node type, either ''knot'' or ''pulley''':
+  headers: [id, x, y, z, type]
+  data:
+  - [1, -1.123196, -0.658922, 3.590858, knot]
+  - [2, -0.256835, -3.148563, 2.814703, knot]
+  - [3, -0.021095, -0.954417, -3.906964, knot]
+  - [4, -0.711827, -1.113164, -0.195037, knot]
+  - [5, -0.966125, -0.659453, 3.597625, knot]
+  - [6, 1.085876, -3.06996, 2.714095, knot]
+  - [7, -0.791988, -3.052266, 2.575994, knot]
+  - [8, 0.089481, -1.087879, -3.228214, knot]
+  - [9, -0.731702, -1.532504, 1.590653, knot]
+  - [10, 0.61538, -4.142726, 0.875716, knot]
+  - [11, -0.616812, -3.825134, 1.648422, knot]
+  - [12, 0.791897, -4.137746, 0.864315, knot]
+  - [13, -0.362112, -0.670112, 3.733556, knot]
+  - [14, 1.167853, -1.92072, 3.288303, knot]
+  - [15, -0.589225, -3.908574, 1.773243, knot]
+  - [16, 0.396111, -1.921865, -1.309919, knot]
+  - [17, 1.204082, -0.654966, 3.540403, knot]
+  - [18, -0.901698, -1.939381, 3.341088, knot]
+  - [19, -0.692391, -3.921859, 1.777294, knot]
+  - [20, -0.769331, -0.887905, 1.721653, knot]
+  - [21, -0.607355, -2.644934, 1.01555, knot]
+  - [22, -0.630632, -0.910001, -4.099458, knot]
+  - [23, -0.32614, -1.977801, 3.449767, knot]
+  - [24, 0.839226, -3.891515, 1.768042, knot]
+  - [25, 0.630484, -3.821673, 0.392361, knot]
+  - [26, 0.473306, -1.155974, -0.902939, knot]
+  - [27, -0.052295, -0.910001, -4.099458, knot]
+  - [28, -0.90765, -3.097783, 2.749708, knot]
+  - [29, -0.633144, -0.941442, -3.901961, knot]
+  - [30, -1.051436, -1.937954, 3.337051, knot]
+  - [31, -0.618402, -2.172485, -0.743695, knot]
+  - [32, -0.942461, -1.898143, 3.164487, knot]
+  - [33, -0.773223, -3.097418, 2.749241, knot]
+  - [34, -1.014197, -0.682069, 3.407109, knot]
+
+bridle_lines:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - name: string, line name':
+  #   - rest_length: measured rest length [m]':
+  #   - diameter: line diameter [m]':
+  #   - material: string, material type (e.g., dyneema)':
+  #   - density: material density [kg/m^3]':
+  headers: [name, rest_length, diameter, material, density]
+  data:
+  - [a1, 0.214896, 0.002, dyneema, 970]
+  - [a2, 0.207939, 0.002, dyneema, 970]
+  - [a3, 0.213602, 0.002, dyneema, 970]
+  - [a4, 0.177977, 0.002, dyneema, 970]
+  - [A1, 1.715543, 0.002, dyneema, 970]
+  - [A2, 1.629437, 0.002, dyneema, 970]
+  - [A3, 1.623267, 0.002, dyneema, 970]
+  - [A4, 2.907486, 0.002, dyneema, 970]
+  - [AI, 1.930738, 0.003, dyneema, 970]
+  - [AII, 1.834374, 0.003, dyneema, 970]
+  - [AIII, 1.821612, 0.003, dyneema, 970]
+  - [amain, 3.711733, 0.004, dyneema, 970]
+  - [amain2, 3.389739, 0.004, dyneema, 970]
+  - [a5.1, 0.2, 0.005, dyneema, 970]
+  - [b1, 0.197785, 0.002, dyneema, 970]
+  - [b2, 0.185876, 0.002, dyneema, 970]
+  - [b3, 0.180014, 0.002, dyneema, 970]
+  - [b4, 0.152655, 0.002, dyneema, 970]
+  - [e1, 2.064223, 0.002, dyneema, 970]
+  - [e2, 1.954245, 0.002, dyneema, 970]
+  - [e3, 1.90091, 0.002, dyneema, 970]
+  - [br1, 4.53082, 0.002, dyneema, 970]
+  - [br2, 4.316681, 0.002, dyneema, 970]
+  - [br3, 4.241059, 0.002, dyneema, 970]
+  - [br4, 3.680993, 0.002, dyneema, 970]
+  - [br5, 0.580461, 0.002, dyneema, 970]
+  - [br6, 0.590505, 0.002, dyneema, 970]
+  - [BR1, 2.357724, 0.002, dyneema, 970]
+  - [BR2, 2.114098, 0.002, dyneema, 970]
+  - [BR3, 5.208639, 0.002, dyneema, 970]
+  - [BRI, 0.700529, 0.003, dyneema, 970]
+  - [brmain, 0.2, 0.004, dyneema, 970]
+
+bridle_connections:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - name: string, line name':
+  #   - ci: integer, node id (start)':
+  #   - cj: integer, node id (end)':
+  #   - ck: integer, third node id (only for pulleys, else omitted or 0)':
+  headers: [name, ci, cj, ck]
+  data:
+  - [a1, 1, 34]
+  - [a2, 30, 32]
+  - [a3, 28, 7]
+  - [a4, 19, 11]
+  - [A1, 34, 20]
+  - [A2, 32, 9]
+  - [A3, 7, 21]
+  - [A4, 11, 31]
+  - [AI, 20, 4]
+  - [AII, 9, 4]
+  - [AIII, 21, 31]
+  - [amain, 4, 29]
+  - [amain2, 31, 29]
+  - [a5.1, 29, 22]
+  - [b1, 5, 34]
+  - [b2, 18, 32]
+  - [b3, 33, 7]
+  - [b4, 15, 11]
+  - [e1, 13, 20]
+  - [e2, 23, 9]
+  - [e3, 2, 21]
+  - [br1, 17, 26]
+  - [br2, 14, 26]
+  - [br3, 6, 16]
+  - [br4, 24, 16]
+  - [br5, 10, 25]
+  - [br6, 12, 25]
+  - [BR1, 26, 8]
+  - [BR2, 16, 8]
+  - [BR3, 25, 3]
+  - [BRI, 8, 3]
+  - [brmain, 3, 27]

@@ -32,18 +32,20 @@ def read_bridle_lines(filepath):
     and then parses each subsequent line to extract:
       - point1: [TopX, Y, Z]
       - point2: [BottomX, Y, Z]
+      - name: the line name from the 'Name' column
+      - length: the line length from the 'Length' column
       - diameter: the value in the 'Diameter' column
 
     Each bridle line is stored as:
-        bridle_line = [point1, point2, diameter]
+        bridle_line = [point1, point2, name, length, diameter]
     and all such lines are collected in a list which is returned.
 
     Parameters:
         filepath (str): Path to the Surfplan .txt file.
 
     Returns:
-        list: A list of bridle lines, each as [point1, point2, diameter].
-              If a diameter field is empty, it is set to None.
+        list: A list of bridle lines, each as [point1, point2, name, length, diameter].
+              If a field is empty, default values are used.
     """
     bridle_lines = []
     in_bridle_section = False
@@ -90,14 +92,26 @@ def read_bridle_lines(filepath):
                 # Skip this line if conversion fails.
                 continue
 
-            # The diameter is expected to be in the 10th column (index 9).
-            diam_str = parts[9].replace(",", ".")
-            try:
-                diameter = float(diam_str) if diam_str else None
-            except ValueError:
-                diameter = None
+            # Extract name from column 7 (index 6)
+            name = parts[6].strip() if len(parts) > 6 else f"line_{len(bridle_lines)+1}"
 
-            bridle_line = [point1, point2, diameter]
+            # Extract length from column 8 (index 7)
+            length_str = parts[7].replace(",", ".") if len(parts) > 7 else "0"
+            try:
+                length = float(length_str) if length_str else 0.0
+            except ValueError:
+                length = 0.0
+
+            # The diameter is expected to be in the 10th column (index 9).
+            diam_str = parts[9].replace(",", ".") if len(parts) > 9 else "0"
+            try:
+                diameter = (
+                    float(diam_str) if diam_str else 0.002
+                )  # Default 2mm diameter
+            except ValueError:
+                diameter = 0.002
+
+            bridle_line = [point1, point2, name, length, diameter]
             bridle_lines.append(bridle_line)
 
     return bridle_lines
