@@ -9,9 +9,6 @@ from SurfplanAdapter.process_surfplan import main_process_surfplan
 from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
     transform_coordinate_system_surfplan_to_VSM,
 )
-from VSM.WingGeometry import Wing
-from VSM.plotting import plot_geometry
-from VSM.BodyAerodynamics import BodyAerodynamics
 
 
 def sort_ribs_by_proximity(ribs_data):
@@ -73,18 +70,28 @@ def saving_bridle_lines(bridle_lines, save_dir):
     # Now, write the data to a CSV file
     with open(file_path, "w", newline="") as csvfile:
         # Define the column names
-        fieldnames = ["p1_x", "p1_y", "p1_z", "p2_x", "p2_y", "p2_z", "diameter"]
+        fieldnames = [
+            "p1_x",
+            "p1_y",
+            "p1_z",
+            "p2_x",
+            "p2_y",
+            "p2_z",
+            "name",
+            "length",
+            "diameter",
+        ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         # Write header
         writer.writeheader()
 
-        # Write each row, unpacking the points and diameter
+        # Write each row, unpacking the points, name, length and diameter
         for bridle_line in bridle_lines:
             # Ensure the bridle_line has the expected structure
-            if bridle_line is None or len(bridle_line) != 3:
+            if bridle_line is None or len(bridle_line) != 5:
                 continue
-            p1, p2, diameter = bridle_line
+            p1, p2, name, length, diameter = bridle_line
             # Create the row dictionary; use conditional checks if needed
             row = {
                 "p1_x": p1[0] if p1 is not None else None,
@@ -93,6 +100,8 @@ def saving_bridle_lines(bridle_lines, save_dir):
                 "p2_x": p2[0] if p2 is not None else None,
                 "p2_y": p2[1] if p2 is not None else None,
                 "p2_z": p2[2] if p2 is not None else None,
+                "name": name,
+                "length": length,
                 "diameter": diameter,
             }
             writer.writerow(row)
@@ -127,9 +136,11 @@ def main(
         is_with_bridle_lines = True
         bridle_lines = [
             [
-                transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),
-                transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),
-                bridle_line[2] / 1e3,  # Convert from mm to m
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),  # point1
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),  # point2
+                bridle_line[2],  # name (string)
+                bridle_line[3],  # length (float)
+                bridle_line[4] / 1e3,  # Convert diameter from mm to m
             ]
             for bridle_line in bridle_lines
         ]

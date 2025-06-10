@@ -1,131 +1,254 @@
 # %% importing necessary modules
-import numpy as np
 from pathlib import Path
-from SurfplanAdapter import generate_geometry_csv_files
+from VSM.core.BodyAerodynamics import BodyAerodynamics
+from VSM.core.Solver import Solver
+from VSM.plotting import plot_polars
+from VSM.plot_geometry_matplotlib import plot_geometry
+from VSM.plot_geometry_plotly import interactive_plot
+import numpy as np
 from SurfplanAdapter.utils import PROJECT_DIR
-from SurfplanAdapter.logging_config import *
-from VSM.Solver import Solver
-import VSM.plotting as plotting
-from VSM.interactive import interactive_plot
-from VSM.BodyAerodynamics import BodyAerodynamics
-from VSM.WingGeometry import Wing
 
 
-## User Inputs
-data_folder_name = "TUDELFT_V3_KITE"
-reference_point_for_moment_calculation = [0.910001, -4.099458, 0.052295]
-n_panels = 40
-va_norm = 10
-alpha = 6.75
-beta_s = 0
-yaw_rate = 0
+def main():
+    """
+    Example: 3D Aerodynamic Analysis of TUDELFT_V3_KITE using VSM
+
+    This script demonstrates the workflow for performing a 3D aerodynamic analysis of the TUDELFT_V3_KITE
+    using the Vortex Step Method (VSM) library. The workflow is structured as follows:
+
+    Step 1: Instantiate BodyAerodynamics objects from different YAML configuration files.
+        - Each YAML config defines the geometry and airfoil/polar data for a specific modeling approach.
+        - Supported approaches include:
+            - Masure regression (empirical model with comprehensive parameters)
+            - Breukels regression (simplified empirical model)
+            - NeuralFoil-based polars
+            - CFD-based polars
+            - Inviscid theory
+
+    Step 2: Set inflow conditions for each aerodynamic object.
+        - Specify wind speed (Umag), angle of attack, side slip, and yaw rate.
+        - Initialize the apparent wind for each BodyAerodynamics object.
+
+    Step 3: Plot the kite geometry using Matplotlib.
+        - Visualize the panel mesh, control points, and aerodynamic centers.
+
+    Step 4: Create an interactive 3D plot using Plotly.
+        - Allows for interactive exploration of the geometry and panel arrangement.
+
+    Step 5: Plot and save polar curves for different angles of attack and side slip angles.
+        - Compare the results of different aerodynamic models.
+        - Optionally include literature/CFD data for validation.
+
+    Step 5a: Plot alpha sweep (angle of attack variation).
+    Step 5b: Plot beta sweep (side slip variation).
+
+    Returns:
+        None
+    """
+
+    # Step 1: Define paths and settings
+    config_file_path = (
+        Path(PROJECT_DIR) / "processed_data" / "TUDELFT_V3_KITE" / "config_kite.yaml"
+    )
+
+    # Aerodynamic analysis settings
+    n_panels = 36
+    spanwise_panel_distribution = "uniform"
+    solver_base_version = Solver()
+
+    # Flight conditions
+    Umag = 10.0  # Wind speed [m/s]
+    angle_of_attack = 6.8  # Angle of attack [degrees]
+    side_slip = 0.0  # Side slip angle [degrees]
+    yaw_rate = 0.0  # Yaw rate [rad/s]
+
+    print(f"Loading configuration from: {config_file_path}")
+    print("Analysis settings:")
+    print(f"  - Number of panels: {n_panels}")
+    print(f"  - Panel distribution: {spanwise_panel_distribution}")
+    print(f"  - Wind speed: {Umag} m/s")
+    print(f"  - Angle of attack: {angle_of_attack}°")
+    print(f"  - Side slip: {side_slip}°")
+    print(f"  - Yaw rate: {yaw_rate} rad/s")
+
+    # Step 2: Instantiate BodyAerodynamics objects
+    print("\nStep 1: Instantiating BodyAerodynamics objects...")
+
+    # Main configuration with masure regression (default)
+    body_aero_masure = BodyAerodynamics.instantiate(
+        n_panels=n_panels,
+        file_path=config_file_path,
+        spanwise_panel_distribution=spanwise_panel_distribution,
+        is_with_bridles=False,
+    )
+    print("  ✓ Masure regression model loaded")
+
+    # Same configuration but with bridles
+    body_aero_masure_with_bridles = BodyAerodynamics.instantiate(
+        n_panels=n_panels,
+        file_path=config_file_path,
+        spanwise_panel_distribution=spanwise_panel_distribution,
+        is_with_bridles=True,
+    )
+    print("  ✓ Masure regression model with bridles loaded")
+
+    # Step 3: Set inflow conditions for each aerodynamic object
+    print("\nStep 2: Setting inflow conditions...")
+    body_aero_masure.va_initialize(Umag, angle_of_attack, side_slip, yaw_rate)
+    body_aero_masure_with_bridles.va_initialize(
+        Umag, angle_of_attack, side_slip, yaw_rate
+    )
+    print("  ✓ Inflow conditions initialized for all models")
+
+    # Step 4: Plot the kite geometry using Matplotlib
+    print("\nStep 3: Plotting kite geometry...")
+    plot_geometry(
+        body_aero_masure,
+        title="TUDELFT_V3_KITE - Masure Regression",
+        data_type=".pdf",
+        save_path=".",
+        is_save=False,
+        is_show=True,
+    )
+    print("  ✓ Geometry plot generated")
+
+    # Step 5: Create an interactive plot using Plotly
+    print("\nStep 4: Creating interactive 3D plot...")
+    interactive_plot(
+        body_aero_masure_with_bridles,
+        vel=Umag,
+        angle_of_attack=angle_of_attack,
+        side_slip=side_slip,
+        yaw_rate=yaw_rate,
+        is_with_aerodynamic_details=True,
+        title="TUDELFT_V3_KITE - Interactive View",
+        is_with_bridles=True,
+    )
+    print("  ✓ Interactive plot generated")
+
+    # Step 6: Define results folder
+    save_folder = Path(PROJECT_DIR) / "results" / "TUDELFT_V3_KITE"
+    save_folder.mkdir(parents=True, exist_ok=True)
+    print(f"\nResults will be saved to: {save_folder}")
+
+    # Step 7a: Plot alpha sweep (angle of attack)
+    print("\nStep 5a: Generating alpha sweep polar plots...")
+
+    # Check if literature data exists
+    path_cfd_literature = (
+        Path(PROJECT_DIR)
+        / "data"
+        / "TUDELFT_V3_KITE"
+        / "3D_polars_literature"
+        / "CFD_RANS_Rey_10e5_Poland2025_alpha_sweep_beta_0.csv"
+    )
+
+    # Define angle ranges for sweeps
+    alpha_range = np.linspace(3, 18, 8)  # 3° to 18° in 8 steps
+    beta_range = np.linspace(-6, 6, 7)  # -6° to 6° in 7 steps
+
+    plot_polars(
+        solver_list=[
+            solver_base_version,
+            solver_base_version,
+        ],
+        body_aero_list=[
+            body_aero_masure,
+            body_aero_masure_with_bridles,
+        ],
+        label_list=[
+            "VSM Masure Regression",
+            "VSM Masure Regression with Bridles",
+        ],
+        literature_path_list=[],
+        angle_range=alpha_range,
+        angle_type="angle_of_attack",
+        angle_of_attack=0,
+        side_slip=side_slip,
+        yaw_rate=yaw_rate,
+        Umag=Umag,
+        title="TUDELFT_V3_KITE_alpha_sweep",
+        data_type=".pdf",
+        save_path=save_folder,
+        is_save=True,
+        is_show=True,
+    )
+    print("  ✓ Alpha sweep completed")
+
+    # Step 7b: Plot beta sweep (side slip)
+    print("\nStep 5b: Generating beta sweep polar plots...")
+    plot_polars(
+        solver_list=[
+            solver_base_version,
+            solver_base_version,
+        ],
+        body_aero_list=[
+            body_aero_masure,
+            body_aero_masure_with_bridles,
+        ],
+        label_list=[
+            "VSM Masure Regression",
+            "VSM Masure Regression with Bridles",
+        ],
+        literature_path_list=[],
+        angle_range=beta_range,
+        angle_type="side_slip",
+        angle_of_attack=angle_of_attack,
+        side_slip=0,
+        yaw_rate=yaw_rate,
+        Umag=Umag,
+        title="TUDELFT_V3_KITE_beta_sweep",
+        data_type=".pdf",
+        save_path=save_folder,
+        is_save=True,
+        is_show=True,
+    )
+    print("  ✓ Beta sweep completed")
+
+    # Step 8: Print summary
+    print(f"\n" + "=" * 60)
+    print("ANALYSIS COMPLETE")
+    print("=" * 60)
+    print(f"Configuration file: {config_file_path.name}")
+    print(f"Number of panels: {n_panels}")
+    if (
+        hasattr(body_aero_masure_with_bridles, "bridles")
+        and body_aero_masure_with_bridles.bridles
+    ):
+        print(
+            f"Bridle lines: {len(body_aero_masure_with_bridles.bridles.bridle_lines)}"
+        )
+    print(f"Results saved to: {save_folder}")
+    print("=" * 60)
+
+    # Step 9: Single point analysis at current conditions
+    print(f"\nSingle point analysis at α={angle_of_attack}°, β={side_slip}°:")
+
+    # Solve for current conditions
+    results_masure = solver_base_version.solve(body_aero_masure)
+    results_with_bridles = solver_base_version.solve(body_aero_masure_with_bridles)
+
+    print(f"Masure Regression:")
+    print(f"  CL = {results_masure['cl']:.4f}")
+    print(f"  CD = {results_masure['cd']:.4f}")
+    print(f"  CS = {results_masure['cs']:.4f}")
+    print(f"  L/D = {results_masure['cl']/results_masure['cd']:.2f}")
+
+    print(f"Masure Regression with Bridles:")
+    print(f"  CL = {results_with_bridles['cl']:.4f}")
+    print(f"  CD = {results_with_bridles['cd']:.4f}")
+    print(f"  CS = {results_with_bridles['cs']:.4f}")
+    print(f"  L/D = {results_with_bridles['cl']/results_with_bridles['cd']:.2f}")
+
+    # Calculate bridle drag penalty
+    delta_cd = results_with_bridles["cd"] - results_masure["cd"]
+    delta_ld = (results_with_bridles["cl"] / results_with_bridles["cd"]) - (
+        results_masure["cl"] / results_masure["cd"]
+    )
+    print(f"Bridle drag penalty:")
+    print(f"  ΔCD = {delta_cd:.4f}")
+    print(f"  Δ(L/D) = {delta_ld:.2f}")
 
 
-load_dir = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
-
-# body_aero_breukels = BodyAerodynamics.from_file(
-#     file_path,
-#     n_panels,
-#     spanwise_panel_distribution,
-#     is_with_corrected_polar=False,
-# )
-
-body_aero = BodyAerodynamics.from_file(
-    file_path=Path(load_dir) / "wing_geometry.csv",
-    n_panels=n_panels,
-    spanwise_panel_distribution="uniform",
-    is_with_corrected_polar=False,
-    polar_data_dir=Path(load_dir) / "polar_data",
-    is_with_bridles=False,
-)
-body_aero_polar_with_bridles = BodyAerodynamics.from_file(
-    file_path=Path(load_dir) / "wing_geometry.csv",
-    n_panels=n_panels,
-    spanwise_panel_distribution="uniform",
-    is_with_corrected_polar=False,
-    polar_data_dir=Path(load_dir) / "polar_data",
-    is_with_bridles=True,
-    bridle_data_path=Path(load_dir) / "bridle_lines.csv",
-)
-body_aero.va_initialize(va_norm, alpha, beta_s, yaw_rate)
-body_aero_polar_with_bridles.va_initialize(va_norm, alpha, beta_s, yaw_rate)
-
-# # MATPLOTLIB Plot the wing geometry
-# from VSM import plotting
-
-# plotting.plot_geometry(
-#     body_aero_polar_with_bridles,
-#     title="V3",
-#     data_type=".pdf",
-#     save_path=".",
-#     is_save=False,
-#     is_show=True,
-# )
-
-## interactive plot
-interactive_plot(
-    body_aero_polar_with_bridles,
-    vel=va_norm,
-    angle_of_attack=alpha,
-    side_slip=beta_s,
-    yaw_rate=0,
-    is_with_aerodynamic_details=True,
-)
-
-### Solve the aerodynamics
-# cl,cd,cs coefficients are flipped to "normal ref frame"
-# x (+) downstream, y(+) left and z(+) upwards reference frame
-solver = Solver()
-
-
-### plotting polar
-plotting.plot_polars(
-    solver_list=[solver, solver],
-    body_aero_list=[body_aero, body_aero_polar_with_bridles],
-    label_list=["Wing", "Wing with Bridles"],
-    literature_path_list=[],
-    angle_range=np.linspace(0, 20, 10),
-    angle_type="angle_of_attack",
-    angle_of_attack=0,
-    side_slip=0,
-    yaw_rate=0,
-    Umag=10,
-    title=f"alpha_sweep_{data_folder_name}",
-    data_type=".pdf",
-    save_path=None,
-    is_save=False,
-    is_show=True,
-)
-plotting.plot_polars(
-    solver_list=[solver, solver],
-    body_aero_list=[body_aero, body_aero_polar_with_bridles],
-    label_list=["Wing", "Wing with Bridles"],
-    literature_path_list=[],
-    angle_range=np.linspace(-10, 10, 10),
-    angle_type="side_slip",
-    angle_of_attack=6.8,
-    side_slip=0,
-    yaw_rate=0,
-    Umag=10,
-    title=f"beta_sweep_{data_folder_name}",
-    data_type=".pdf",
-    save_path=None,
-    is_save=False,
-    is_show=True,
-)
-### plotting distributions
-plotting.plot_distribution(
-    alpha_list=[5, 10],
-    Umag=va_norm,
-    side_slip=beta_s,
-    yaw_rate=yaw_rate,
-    solver_list=[solver, solver],
-    body_aero_list=[body_aero, body_aero_polar_with_bridles],
-    label_list=["Wing", "Wing with Bridles"],
-    title="spanwise_distribution",
-    data_type=".pdf",
-    save_path=None,
-    is_save=False,
-    is_show=True,
-    run_time_list=None,
-)
+if __name__ == "__main__":
+    main()
