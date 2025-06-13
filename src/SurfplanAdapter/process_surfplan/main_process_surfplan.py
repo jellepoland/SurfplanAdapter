@@ -5,24 +5,65 @@ from pathlib import Path
 from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
     reading_profile_from_airfoil_dat_files,
 )
-from SurfplanAdapter.plotting import plot_and_save_all_profiles
-import shutil
+from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
+    transform_coordinate_system_surfplan_to_VSM,
+)
+from SurfplanAdapter.process_surfplan.utils import line_parser
+from SurfplanAdapter.plotting import plot_and_save_all_profiles_from_ribs_data
 
 
-def line_parser(line):
-    """
-    Parse a line from the .txt file from Surfplan.
+def _sort_ribs_by_proximity(ribs_data):
+    # Helper function to calculate radial distance
+    def radial_distance(point1, point2):
+        return np.linalg.norm(np.array(point1) - np.array(point2))
 
-    Parameters:
-        line (str): The line to parse.
+    # Transform the leading-edge points
+    transformed_ribs = [
+        {"rib": rib, "LE_point": transform_coordinate_system_surfplan_to_VSM(rib["LE"])}
+        for rib in ribs_data
+    ]
 
-    Returns:
-        list: A list of floats containing the parsed values.
-    """
-    if ";" in line:
-        return list(map(float, line.replace(",", ".").split(";")))
-    else:
-        return list(map(float, line.split(",")))
+    # Find the rib with the farthest point with positive y-coordinate
+    farthest_rib = None
+    max_distance = -1
+    for rib_data in transformed_ribs:
+        LE_point = rib_data["LE_point"]
+        if LE_point[1] > 0:  # Ensure the y-coordinate is positive
+            total_distance = sum(
+                radial_distance(LE_point, other["LE_point"])
+                for other in transformed_ribs
+            )
+            if total_distance > max_distance:
+                max_distance = total_distance
+                farthest_rib = rib_data
+
+    if not farthest_rib:
+        raise ValueError(
+            "No rib has a positive y-coordinate in its leading-edge point."
+        )
+
+    # Remove the farthest rib and use it as the starting point
+    sorted_ribs = [farthest_rib]
+    remaining_ribs = [
+        rib_data
+        for rib_data in transformed_ribs
+        if not np.allclose(rib_data["LE_point"], farthest_rib["LE_point"])
+    ]
+
+    # Iteratively sort the remaining ribs based on proximity
+    while remaining_ribs:
+        last_point = sorted_ribs[-1]["LE_point"]
+        closest_index = min(
+            range(len(remaining_ribs)),
+            key=lambda i: radial_distance(last_point, remaining_ribs[i]["LE_point"]),
+        )
+        closest_rib = remaining_ribs.pop(closest_index)
+        sorted_ribs.append(closest_rib)
+
+    # Extract the sorted ribs
+    sorted_ribs_data = [rib_data["rib"] for rib_data in sorted_ribs]
+
+    return sorted_ribs_data
 
 
 def read_bridle_lines(filepath):
@@ -55,7 +96,7 @@ def read_bridle_lines(filepath):
     with open(filepath, "r") as file:
         lines = file.readlines()
 
-    for line in lines:
+    for line_num, line in enumerate(lines):
         line = line.strip()
         if not line:
             continue
@@ -76,35 +117,53 @@ def read_bridle_lines(filepath):
             if ";" not in line:
                 break
 
-            # Split the line by semicolons and strip extra whitespace.
-            parts = [part.strip() for part in line.split(";")]
+            # For bridle lines, we need to preserve all columns including empty ones
+            # Split by semicolon and clean each part, but keep all parts
+            raw_parts = line.split(";")
+            cleaned_parts = []
+            for part in raw_parts:
+                part = part.strip()
+                if part and any(char.isdigit() for char in part):
+                    # Convert comma to period for decimal numbers
+                    part = part.replace(",", ".")
+                    # Handle multiple periods in numbers (malformed floats)
+                    if part.count(".") > 1:
+                        first_period = part.find(".")
+                        if first_period != -1:
+                            before_period = part[: first_period + 1]
+                            after_period = part[first_period + 1 :].replace(".", "")
+                            part = before_period + after_period
+                cleaned_parts.append(part)
 
             # Expecting at least 10 columns based on the header:
             # TopX, Y, Z, BottomX, Y, Z, Name, Length, Material, Diameter
-            if len(parts) < 10:
+            if len(cleaned_parts) < 10:
                 continue
 
             try:
                 # Extract point1 from the first three columns.
-                point1 = [float(parts[i].replace(",", ".")) for i in range(3)]
+                point1 = [float(cleaned_parts[i]) for i in range(3)]
                 # Extract point2 from columns 4-6.
-                point2 = [float(parts[i].replace(",", ".")) for i in range(3, 6)]
+                point2 = [float(cleaned_parts[i]) for i in range(3, 6)]
             except ValueError:
-                # Skip this line if conversion fails.
                 continue
 
             # Extract name from column 7 (index 6)
-            name = parts[6].strip() if len(parts) > 6 else f"line_{len(bridle_lines)+1}"
+            name = (
+                cleaned_parts[6].strip()
+                if len(cleaned_parts) > 6
+                else f"line_{len(bridle_lines)+1}"
+            )
 
             # Extract length from column 8 (index 7)
-            length_str = parts[7].replace(",", ".") if len(parts) > 7 else "0"
+            length_str = cleaned_parts[7] if len(cleaned_parts) > 7 else "0"
             try:
                 length = float(length_str) if length_str else 0.0
             except ValueError:
                 length = 0.0
 
             # The diameter is expected to be in the 10th column (index 9).
-            diam_str = parts[9].replace(",", ".") if len(parts) > 9 else "0"
+            diam_str = cleaned_parts[9] if len(cleaned_parts) > 9 else "0"
             try:
                 diameter = (
                     float(diam_str) if diam_str else 0.002
@@ -304,10 +363,11 @@ def correcting_wingtip_by_adding_ribs(
     ribs_data,
     profile_load_dir=None,  # new argument for fallback
 ):
-    ## Preparing LE, TE from the wingtip list
+    ## Preparing LE, TE, VUP from the wingtip list
     wingtip = wingtip[::-1]
     le_list = [wingtip[i][0] for i in range(n_wingtip_segments)]
     te_list = [wingtip[i][1] for i in range(n_wingtip_segments)]
+    vup_list = [wingtip[i][2] for i in range(n_wingtip_segments)]  # Add VUP extraction
     chord_len_list = [
         np.linalg.norm(te_i - le_i) for le_i, te_i in zip(le_list, te_list)
     ]
@@ -334,11 +394,13 @@ def correcting_wingtip_by_adding_ribs(
     profile_outer_rib, point_list_outer_rib = reading_profile_from_airfoil_dat_files(
         get_profile_path(profile_name_outer, profile_save_dir, profile_load_dir),
         is_return_point_list=True,
+        is_calculate_d_tube_from_dat=True,
     )
     profile_name_tip = f"prof_{n_profiles}.dat"
     profile_tip, point_list_tip = reading_profile_from_airfoil_dat_files(
         get_profile_path(profile_name_tip, profile_save_dir, profile_load_dir),
         is_return_point_list=True,
+        is_calculate_d_tube_from_dat=True,
     )
 
     ## Generating wingtip point lists
@@ -373,12 +435,21 @@ def correcting_wingtip_by_adding_ribs(
     ) / np.array(chord_len_list)
     chord_list = chord_len_list
 
+    # Create linear interpolation for d_tube_from_dat as well
+    d_tube_from_dat_outer_rib = profile_outer_rib.get("d_tube_from_dat", 0.0)
+    d_tube_from_dat_tip = profile_tip.get("d_tube_from_dat", 0.0)
+    d_tube_from_dat_list = np.linspace(
+        d_tube_from_dat_outer_rib, d_tube_from_dat_tip, n_wingtip_segments
+    )
+
     ## Make lists for all ribs from left wing tip to right wing tip
     left_wing_tip_additions = []
     for i, (
         le_i,
         te_i,
-        d_tube_i,
+        vup_i,
+        d_tube_from_surfplan_txt_i,
+        d_tube_from_dat_i,
         x_max_camber_i,
         y_max_camber_i,
         TE_angle_i,
@@ -387,7 +458,9 @@ def correcting_wingtip_by_adding_ribs(
         zip(
             le_list[::-1],
             te_list[::-1],
+            vup_list[::-1],
             tube_diam_list[::-1],
+            d_tube_from_dat_list[::-1],
             x_max_camber_list[::-1],
             y_max_camber_list[::-1],
             TE_angle_list[::-1],
@@ -399,7 +472,9 @@ def correcting_wingtip_by_adding_ribs(
             {
                 "LE": le_i,
                 "TE": te_i,
-                "d_tube": d_tube_i,
+                "VUP": vup_i,
+                "d_tube_from_surfplan_txt": d_tube_from_surfplan_txt_i,
+                "d_tube_from_dat": d_tube_from_dat_i,
                 "x_max_camber": x_max_camber_i,
                 "y_max_camber": y_max_camber_i,
                 "is_strut": False,
@@ -413,7 +488,9 @@ def correcting_wingtip_by_adding_ribs(
     for i, (
         le_i,
         te_i,
-        d_tube_i,
+        vup_i,
+        d_tube_from_surfplan_txt_i,
+        d_tube_from_dat_i,
         x_max_camber_i,
         y_max_camber_i,
         TE_angle_i,
@@ -422,7 +499,9 @@ def correcting_wingtip_by_adding_ribs(
         zip(
             le_list,
             te_list,
+            vup_list,
             tube_diam_list,
+            d_tube_from_dat_list,
             x_max_camber_list,
             y_max_camber_list,
             TE_angle_list,
@@ -434,7 +513,11 @@ def correcting_wingtip_by_adding_ribs(
             {
                 "LE": np.array([-le_i[0], le_i[1], le_i[2]]),
                 "TE": np.array([-te_i[0], te_i[1], te_i[2]]),
-                "d_tube": d_tube_i,
+                "VUP": np.array(
+                    [-vup_i[0], vup_i[1], vup_i[2]]
+                ),  # Mirror VUP for symmetry
+                "d_tube_from_surfplan_txt": d_tube_from_surfplan_txt_i,
+                "d_tube_from_dat": d_tube_from_dat_i,
                 "x_max_camber": x_max_camber_i,
                 "y_max_camber": y_max_camber_i,
                 "is_strut": False,
@@ -457,7 +540,7 @@ def main(
     surfplan_txt_file_path: Path,
     profile_load_dir: Path,
     profile_save_dir: Path,
-    is_make_plots: bool = False,
+    is_make_plots: bool = True,
 ):
     """Read the data from a Surfplan .txt file and return the ribs' data and bridle lines.
 
@@ -473,9 +556,7 @@ def main(
     kite_dir_path = os.path.dirname(surfplan_txt_file_path)
     ribs, wingtip, le_tube, n_ribs, n_wingtip_segments, strut_id_list = read_lines(
         surfplan_txt_file_path
-    )
-
-    # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
+    )  # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
         (
             [le_tube[0]],
@@ -508,17 +589,20 @@ def main(
         airfoil, point_list = reading_profile_from_airfoil_dat_files(
             Path(kite_dir_path) / "profiles" / f"{profile_name}.dat",
             is_return_point_list=True,
+            is_calculate_d_tube_from_dat=True,
         )
         point_list_list.append(point_list)
         x_max_camber = airfoil["x_max_camber"]
         y_max_camber = airfoil["y_max_camber"]
         TE_angle = airfoil["TE_angle"]
+        d_tube_from_dat = airfoil["d_tube_from_dat"]
 
         # Non-dimensionalize by chord
         chord_i = np.linalg.norm(rib_te - rib_le)
         tube_diameter_i /= chord_i
         x_max_camber /= chord_i
         y_max_camber /= chord_i
+        # d_tube_from_dat is already non-dimensional from the .dat file
 
         ## checking if at this rib location there is a strut
         if i in strut_id_list:
@@ -530,7 +614,9 @@ def main(
             {
                 "LE": rib_le,
                 "TE": rib_te,
-                "d_tube": tube_diameter_i,
+                "VUP": ribs[i][2],  # Add VUP information
+                "d_tube_from_surfplan_txt": tube_diameter_i,
+                "d_tube_from_dat": d_tube_from_dat,
                 "x_max_camber": x_max_camber,
                 "y_max_camber": y_max_camber,
                 "is_strut": is_strut,
@@ -571,9 +657,10 @@ def main(
 
         # ## Do the process seperately for the last profile
         profile_name_initial_tip = f"prof_{n_profiles}"
+        n_profiles_incl_wingtip_segments = n_profiles + n_wingtip_segments - 1
         profile_name_last = f"prof_{n_profiles+n_wingtip_segments-1}"
-        print(f"    profile_name_initial_tip: {profile_name_initial_tip}")
-        print(f"    profile_name_last: {profile_name_last}")
+        # print(f"    profile_name_initial_tip: {profile_name_initial_tip}")
+        # print(f"    profile_name_last: {profile_name_last}")
         profile_path = Path(profile_load_dir) / f"{profile_name_initial_tip}.dat"
         # make a copy of this file into the save dir
         with open(profile_path, "r") as file:
@@ -581,37 +668,56 @@ def main(
         with open(Path(profile_save_dir) / f"{profile_name_last}.dat", "w") as file:
             for line in lines:
                 file.write(line)
-
-        if is_make_plots:
-            plot_and_save_all_profiles(
-                profile_save_dir,
-                ribs_data,
-            )
+    else:
+        n_profiles_incl_wingtip_segments = n_profiles
 
     bridle_lines = read_bridle_lines(surfplan_txt_file_path)
 
-    # print("ribs_data: ", ribs_data)
-    print(f"len(ribs_data): {len(ribs_data)}")
+    for i, rib in enumerate(ribs_data):
+        print(
+            f"Rib {i}: d_tube_from_surfplan_txt: {rib['d_tube_from_surfplan_txt']}, chord: {rib['chord']}, LE[y]: {rib['LE'][0]}"
+        )
 
-    return ribs_data, bridle_lines
+    # Sort ribs data by proximity
+    ribs_data_sorted = _sort_ribs_by_proximity(ribs_data)
 
+    # Add an airfoil_id to each rib, we should start from the number_of_profiles and then count down
+    # So it should be 18,17,16, ..., 1, 0, 1, 2, ..., 17, 18
 
-if __name__ == "__main__":
-    from SurfplanAdapter.utils import PROJECT_DIR
+    for i, rib in enumerate(ribs_data_sorted):
+        # Calculate the airfoil_id based on the index
+        if i < n_profiles_incl_wingtip_segments:
+            rib["airfoil_id"] = n_profiles_incl_wingtip_segments - i
+        else:
+            rib["airfoil_id"] = (i + 1) - n_profiles_incl_wingtip_segments
 
-    # filepath = Path(PROJECT_DIR) / "data" / "default_kite" / "default_kite_3d.txt"
-    # ribs_data = read_surfplan_txt(filepath, "lei_airfoil_breukels")
+    for i, rib in enumerate(ribs_data_sorted):
+        print(
+            f"Sorted Rib {i}: airfoil_id: {rib['airfoil_id']}, d_tube_from_surfplan_txt: {rib['d_tube_from_surfplan_txt']}, chord: {rib['chord']}, LE[y]: {rib['LE'][0]}"
+        )
 
-    surfplan_txt_file_path = (
-        Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "TUDELFT_V3_KITE_3d.txt"
-    )
-    profile_load_dir = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "profiles"
-    profile_save_dir = (
-        Path(PROJECT_DIR) / "processed_data" / "TUDELFT_V3_KITE" / "profiles"
-    )
-    ribs_data, bridle_lines = main(
-        surfplan_txt_file_path=surfplan_txt_file_path,
-        profile_load_dir=profile_load_dir,
-        profile_save_dir=profile_save_dir,
-        is_make_plots=True,
-    )
+    ## Transform data into VSM coordinate system
+    for rib in ribs_data_sorted:
+        rib["LE"] = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
+        rib["TE"] = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
+        rib["VUP"] = transform_coordinate_system_surfplan_to_VSM(rib["VUP"])
+
+    # Transform bridle lines to VSM coordinate system
+    if len(bridle_lines) > 0:
+        bridle_lines = [
+            [
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),  # point1
+                transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),  # point2
+                bridle_line[2],  # name (string)
+                bridle_line[3],  # length (float)
+                bridle_line[4],  # diameter (float)
+            ]
+            for bridle_line in bridle_lines
+        ]
+
+    # Plot and save all profiles if requested
+    if is_make_plots:
+
+        plot_and_save_all_profiles_from_ribs_data(ribs_data_sorted, profile_save_dir)
+
+    return ribs_data_sorted, bridle_lines

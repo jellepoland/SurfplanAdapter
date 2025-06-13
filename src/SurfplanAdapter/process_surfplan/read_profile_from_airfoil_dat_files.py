@@ -5,21 +5,21 @@ from pathlib import Path
 import numpy as np
 
 
-def reading_profile_from_airfoil_dat_files(filepath, is_return_point_list=False):
+def reading_profile_from_airfoil_dat_files(
+    file_path, is_return_point_list=False, is_calculate_d_tube_from_dat=True
+):
     """
-    Read main characteristics of an ILE profile from a .dat file.
+    Read profile data from a .dat file and extract airfoil characteristics.
 
     Parameters:
-    filepath (str): The name of the file containing the profile data. Should be a .dat file
-
-    The .dat file should follow the XFoil norm: points start at the trailing edge (TE),
-    go to the leading edge (LE) through the extrado, and come back to the TE through the intrado.
+    file_path (str or Path): Path to the .dat file containing the profile data
+    is_return_point_list (bool): Whether to return the point list as well
+    is_calculate_d_tube_from_dat (bool): Whether to calculate d_tube_from_dat using circle fitting
 
     Returns:
-    dict: A dictionary containing the profile name, tube diameter, max_camber, x_max_camber, and TE angle.
-          The keys are "name", "tube_diameter", "max_camber", "x_max_camber", and "TE_angle".
+    dict or tuple: Profile characteristics dictionary, optionally with point list
     """
-    with open(filepath, "r") as file:
+    with open(file_path, "r") as file:
         lines = file.readlines()
 
     # Initialize variables
@@ -60,50 +60,121 @@ def reading_profile_from_airfoil_dat_files(filepath, is_return_point_list=False)
     else:
         TE_angle_deg = None  # Not enough points to calculate the angle
 
-    profile_dict = {
+    # Function to fit circle from LE data points (copied from plot_profiles)
+    def fit_circle_from_le_points(x_points, y_points):
+        """
+        Fit a circle from LE to the lowest point between x=0 and x=0.2.
+        Returns the fitted diameter with center constrained to (radius, 0).
+        """
+        import numpy as np
+
+        # Find the leading edge (x=0 or closest to x=0)
+        x_array = np.array(x_points)
+        y_array = np.array(y_points)
+
+        # Find LE point (closest to x=0)
+        le_idx = np.argmin(np.abs(x_array))
+        le_x, le_y = x_array[le_idx], y_array[le_idx]
+
+        # Find the lowest point between x=0 and x=0.2
+        mask_region = (x_array >= 0) & (x_array <= 0.2)
+
+        if np.sum(mask_region) < 2:
+            return 0.0, 0.0, 0.0  # Not enough points in the region
+
+        # Get indices of points in the region
+        region_indices = np.where(mask_region)[0]
+        region_y = y_array[mask_region]
+
+        # Find the index of the lowest point in this region
+        lowest_idx_in_region = np.argmin(region_y)
+        lowest_idx = region_indices[lowest_idx_in_region]
+
+        # Get points from LE to the lowest point
+        # Determine the range of indices to use
+        start_idx = min(le_idx, lowest_idx)
+        end_idx = max(le_idx, lowest_idx) + 1
+
+        x_fit = x_array[start_idx:end_idx]
+        y_fit = y_array[start_idx:end_idx]
+
+        if len(x_fit) < 3:
+            return 0.0, 0.0, 0.0  # Not enough points for circle fitting
+
+        # Fit circle with center constrained to (radius, 0)
+        # Circle equation: (x-radius)^2 + y^2 = radius^2
+        # Rearranged: x^2 - 2*radius*x + radius^2 + y^2 = radius^2
+        # Simplified: x^2 + y^2 = 2*radius*x
+        # So: radius = (x^2 + y^2) / (2*x)
+
+        # Calculate radius for each point and take the mean
+        radii = []
+        for i in range(len(x_fit)):
+            if x_fit[i] > 0:  # Avoid division by zero
+                r = (x_fit[i] ** 2 + y_fit[i] ** 2) / (2 * x_fit[i])
+                radii.append(r)
+
+        if not radii:
+            return 0.0, 0.0, 0.0
+
+        # Use median to be robust against outliers
+        radius = np.median(radii)
+
+        # Return diameter and center coordinates
+        return 2 * radius, radius, 0.0
+
+    # Calculate d_tube_from_dat if requested
+    d_tube_from_dat = 0.0
+    if is_calculate_d_tube_from_dat and point_list:
+        x_points = [point[0] for point in point_list]
+        y_points = [point[1] for point in point_list]
+        d_tube_from_dat, _, _ = fit_circle_from_le_points(x_points, y_points)
+
+    # Create profile dictionary with all characteristics
+    profile = {
         "name": profile_name,
-        "tube_diameter": tube_diameter,
         "x_max_camber": x_max_camber,
         "y_max_camber": y_max_camber,
         "TE_angle": TE_angle_deg,
+        "d_tube_from_dat": d_tube_from_dat,
     }
 
     if is_return_point_list:
-        return profile_dict, point_list
+        return profile, point_list
     else:
-        return profile_dict
+        return profile
 
 
-if __name__ == "__main__":
-    from SurfplanAdapter.utils import PROJECT_DIR
+# if __name__ == "__main__":
+#     from SurfplanAdapter.utils import PROJECT_DIR
 
-    # defining paths
-    filepath = (
-        Path(PROJECT_DIR) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles" / "prof_1.dat"
-    )
-    # Example usage:
-    profile = reading_profile_from_airfoil_dat_files(filepath)
-    profile_name = profile["name"]
-    max_camber = profile["max_camber"]
-    x_max_camber = profile["x_max_camber"]
-    TE_angle = profile["TE_angle"]
-    # print(f"Profile Name: {profile_name}")
-    # print(f"Highest Point X Coordinate (x_max_camber): {x_max_camber} m")
-    # print(f"Highest Point Y Coordinate (max_camber) CAMBER: {max_camber} m")
-    # print(f"TE angle: {TE_angle:.2f}°")
-    # print(f"profile:{profile}")
+#     # defining paths
+#     filepath = (
+#         Path(PROJECT_DIR) / "data" / "TUDELFT_V3_LEI_KITE" / "profiles" / "prof_1.dat"
+#     )
+#     # Example usage:
+#     profile = reading_profile_from_airfoil_dat_files(filepath)
+#     profile_name = profile["name"]
+#     max_camber = profile["max_camber"]
+#     x_max_camber = profile["x_max_camber"]
+#     TE_angle = profile["TE_angle"]
+#     # print(f"Profile Name: {profile_name}")
+#     # print(f"Highest Point X Coordinate (x_max_camber): {x_max_camber} m")
+#     # print(f"Highest Point Y Coordinate (max_camber) CAMBER: {max_camber} m")
+#     # print(f"TE angle: {TE_angle:.2f}°")
+#     # print(f"profile:{profile}")
 
-    points = profile["points"]
-    x = [point[0] for point in points]
-    y = [point[1] for point in points]
-    plt.plot(x, y, label="Profile")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.grid()
-    ax = plt.gca()
-    ax.set_aspect("equal", adjustable="box")
-    plt.draw()
-    # plt.show()
+#     points = profile["points"]
+#     x = [point[0] for point in points]
+#     y = [point[1] for point in points]
+#     plt.plot(x, y, label="Profile")
+#     plt.xlabel("x")
+#     plt.ylabel("y")
+#     plt.grid()
+#     ax = plt.gca()
+#     ax.set_aspect("equal", adjustable="box")
+#     plt.draw()
+#     # plt.show()
 
 # def rotate_points(points, angle_degrees, center_x=-0.6, center_y=-1.28 / 2):
 #     angle_rad = np.radians(angle_degrees)

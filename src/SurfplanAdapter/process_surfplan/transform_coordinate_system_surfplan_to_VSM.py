@@ -25,7 +25,6 @@ def transform_coordinate_system_surfplan_to_VSM(coord_surfplan):
 
     # Rotation matrix
     R = np.array([[0, 0, -1], [-1, 0, 0], [0, 1, 0]])
-    # R = np.array([[-1, 0, 0], [0, 0, -1], [0, 1, 0]])
     coord_vsm = np.dot(R, coord_surfplan)
 
     return coord_vsm

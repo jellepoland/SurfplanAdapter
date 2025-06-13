@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import sys
+from pathlib import Path
+
+# Add the src directory to the path
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+from SurfplanAdapter.utils import clean_numeric_line
 
 
 class Rib:
@@ -150,12 +156,22 @@ class Kite:
                     or not any(char.isdigit() for char in line)
                 ):
                     continue  # Skip empty or comments lines
-                values = list(map(float, line.replace(",", ".").split(";")))
-                if len(values) == 9:
-                    le = np.array(values[0:3])
-                    te = np.array(values[3:6])
-                    vup = np.array(values[6:9])
-                    self.ribs.append(Rib(le, te, vup))
+
+                # Clean the line using utility function
+                cleaned_parts = clean_numeric_line(line)
+
+                try:
+                    values = list(map(float, cleaned_parts))
+                    if len(values) == 9:
+                        le = np.array(values[0:3])
+                        te = np.array(values[3:6])
+                        vup = np.array(values[6:9])
+                        self.ribs.append(Rib(le, te, vup))
+                except ValueError as e:
+                    print(f"Error parsing rib line: {line}")
+                    print(f"Cleaned parts: {cleaned_parts}")
+                    print(f"Error: {e}")
+                    continue
             # Read Kite LE tube
             elif section == "le_tube":
                 if (
@@ -164,11 +180,21 @@ class Kite:
                     or not any(char.isdigit() for char in line)
                 ):
                     continue  # Skip empty or comments lines
-                values = list(map(float, line.replace(",", ".").split(";")))
-                if len(values) == 4:
-                    centre = np.array(values[0:3])
-                    diam = values[3]
-                    self.le_tube.append(LETubeSection(centre, diam))
+
+                # Clean the line using utility function
+                cleaned_parts = clean_numeric_line(line)
+
+                try:
+                    values = list(map(float, cleaned_parts))
+                    if len(values) == 4:
+                        centre = np.array(values[0:3])
+                        diam = values[3]
+                        self.le_tube.append(LETubeSection(centre, diam))
+                except ValueError as e:
+                    print(f"Error parsing LE tube line: {line}")
+                    print(f"Cleaned parts: {cleaned_parts}")
+                    print(f"Error: {e}")
+                    continue
             # Read Struts
             elif section == "strut":
                 if not line:  # end of the strut section
@@ -179,12 +205,22 @@ class Kite:
                     continue
                 if line.isdigit() or not any(char.isdigit() for char in line):
                     continue  # Skip comments lines
-                values = list(map(float, line.replace(",", ".").split(";")))
-                if len(values) == 4:
-                    centre = np.array(values[0:3])
-                    diam = values[3]
-                    strut_section = StrutSection(centre, diam)
-                    current_strut.add_section(strut_section)
+
+                # Clean the line using utility function
+                cleaned_parts = clean_numeric_line(line)
+
+                try:
+                    values = list(map(float, cleaned_parts))
+                    if len(values) == 4:
+                        centre = np.array(values[0:3])
+                        diam = values[3]
+                        strut_section = StrutSection(centre, diam)
+                        current_strut.add_section(strut_section)
+                except ValueError as e:
+                    print(f"Error parsing strut line: {line}")
+                    print(f"Cleaned parts: {cleaned_parts}")
+                    print(f"Error: {e}")
+                    continue
 
             # Read Bridle
             elif section == "bridle":
@@ -194,13 +230,26 @@ class Kite:
                     or not any(char.isdigit() for char in line)
                 ):
                     continue  # Skip empty or comments lines
-                parts = line.replace(",", ".").split(";")
-                top = np.array(list(map(float, parts[0:3])))
-                bottom = np.array(list(map(float, parts[3:6])))
-                name = parts[6]
-                length = float(parts[7].replace(",", "."))
-                material = parts[8] if len(parts) > 8 else ""
-                self.bridle.append(Bridle(top, bottom, name, length, material))
+
+                # Clean the line using utility function
+                cleaned_parts = clean_numeric_line(line)
+
+                try:
+                    top = np.array(list(map(float, cleaned_parts[0:3])))
+                    bottom = np.array(list(map(float, cleaned_parts[3:6])))
+                    name = cleaned_parts[6] if len(cleaned_parts) > 6 else ""
+                    length = (
+                        float(cleaned_parts[7])
+                        if len(cleaned_parts) > 7 and cleaned_parts[7]
+                        else 0.0
+                    )
+                    material = cleaned_parts[8] if len(cleaned_parts) > 8 else ""
+                    self.bridle.append(Bridle(top, bottom, name, length, material))
+                except (ValueError, IndexError) as e:
+                    print(f"Error parsing bridle line: {line}")
+                    print(f"Cleaned parts: {cleaned_parts}")
+                    print(f"Error: {e}")
+                    continue
 
 
 def plot_data(rib_data, le_tube_data, struts_data, bridle_data):
