@@ -9,7 +9,7 @@ import numpy as np
 from SurfplanAdapter.utils import PROJECT_DIR
 
 
-def main():
+def main(kite_name="TUDELFT_V3_KITE"):
     """
     Example: 3D Aerodynamic Analysis of TUDELFT_V3_KITE using VSM
 
@@ -45,12 +45,10 @@ def main():
     Returns:
         None
     """
-
     # Step 1: Define paths and settings
     config_file_path = (
-        Path(PROJECT_DIR) / "processed_data" / "TUDELFT_V3_KITE" / "config_kite.yaml"
+        Path(PROJECT_DIR) / "processed_data" / f"{kite_name}" / "config_kite.yaml"
     )
-
     # Aerodynamic analysis settings
     n_panels = 36
     spanwise_panel_distribution = "uniform"
@@ -75,36 +73,35 @@ def main():
     print("\nStep 1: Instantiating BodyAerodynamics objects...")
 
     # Main configuration with masure regression (default)
-    body_aero_masure = BodyAerodynamics.instantiate(
+    body_aero = BodyAerodynamics.instantiate(
         n_panels=n_panels,
         file_path=config_file_path,
         spanwise_panel_distribution=spanwise_panel_distribution,
         is_with_bridles=False,
     )
-    print("  ✓ Masure regression model loaded")
+    print("  ✓ BodyAerodynamics Instantiated")
 
     # Same configuration but with bridles
-    body_aero_masure_with_bridles = BodyAerodynamics.instantiate(
+    body_aero_with_bridles = BodyAerodynamics.instantiate(
         n_panels=n_panels,
         file_path=config_file_path,
         spanwise_panel_distribution=spanwise_panel_distribution,
         is_with_bridles=True,
     )
-    print("  ✓ Masure regression model with bridles loaded")
+    print("  ✓ BodyAerodynamics Instantiated with Bridles")
 
     # Step 3: Set inflow conditions for each aerodynamic object
     print("\nStep 2: Setting inflow conditions...")
-    body_aero_masure.va_initialize(Umag, angle_of_attack, side_slip, yaw_rate)
-    body_aero_masure_with_bridles.va_initialize(
-        Umag, angle_of_attack, side_slip, yaw_rate
-    )
+    body_aero.va_initialize(Umag, angle_of_attack, side_slip, yaw_rate)
+    body_aero_with_bridles.va_initialize(Umag, angle_of_attack, side_slip, yaw_rate)
+
     print("  ✓ Inflow conditions initialized for all models")
 
     # Step 4: Plot the kite geometry using Matplotlib
     print("\nStep 3: Plotting kite geometry...")
     plot_geometry(
-        body_aero_masure,
-        title="TUDELFT_V3_KITE - Masure Regression",
+        body_aero,
+        title=f"{kite_name}",
         data_type=".pdf",
         save_path=".",
         is_save=False,
@@ -115,33 +112,24 @@ def main():
     # Step 5: Create an interactive plot using Plotly
     print("\nStep 4: Creating interactive 3D plot...")
     interactive_plot(
-        body_aero_masure_with_bridles,
+        body_aero_with_bridles,
         vel=Umag,
         angle_of_attack=angle_of_attack,
         side_slip=side_slip,
         yaw_rate=yaw_rate,
         is_with_aerodynamic_details=True,
-        title="TUDELFT_V3_KITE - Interactive View",
+        title=f"{kite_name}",
         is_with_bridles=True,
     )
     print("  ✓ Interactive plot generated")
 
     # Step 6: Define results folder
-    save_folder = Path(PROJECT_DIR) / "results" / "TUDELFT_V3_KITE"
+    save_folder = Path(PROJECT_DIR) / "results" / f"{kite_name}"
     save_folder.mkdir(parents=True, exist_ok=True)
     print(f"\nResults will be saved to: {save_folder}")
 
     # Step 7a: Plot alpha sweep (angle of attack)
     print("\nStep 5a: Generating alpha sweep polar plots...")
-
-    # Check if literature data exists
-    path_cfd_literature = (
-        Path(PROJECT_DIR)
-        / "data"
-        / "TUDELFT_V3_KITE"
-        / "3D_polars_literature"
-        / "CFD_RANS_Rey_10e5_Poland2025_alpha_sweep_beta_0.csv"
-    )
 
     # Define angle ranges for sweeps
     alpha_range = np.linspace(3, 18, 8)  # 3° to 18° in 8 steps
@@ -153,12 +141,12 @@ def main():
             solver_base_version,
         ],
         body_aero_list=[
-            body_aero_masure,
-            body_aero_masure_with_bridles,
+            body_aero,
+            body_aero_with_bridles,
         ],
         label_list=[
-            "VSM Masure Regression",
-            "VSM Masure Regression with Bridles",
+            "VSM",
+            "VSM with Bridles",
         ],
         literature_path_list=[],
         angle_range=alpha_range,
@@ -167,7 +155,7 @@ def main():
         side_slip=side_slip,
         yaw_rate=yaw_rate,
         Umag=Umag,
-        title="TUDELFT_V3_KITE_alpha_sweep",
+        title=f"{kite_name}_alpha_sweep",
         data_type=".pdf",
         save_path=save_folder,
         is_save=True,
@@ -183,12 +171,12 @@ def main():
             solver_base_version,
         ],
         body_aero_list=[
-            body_aero_masure,
-            body_aero_masure_with_bridles,
+            body_aero,
+            body_aero_with_bridles,
         ],
         label_list=[
-            "VSM Masure Regression",
-            "VSM Masure Regression with Bridles",
+            "VSM",
+            "VSM with Bridles",
         ],
         literature_path_list=[],
         angle_range=beta_range,
@@ -197,7 +185,7 @@ def main():
         side_slip=0,
         yaw_rate=yaw_rate,
         Umag=Umag,
-        title="TUDELFT_V3_KITE_beta_sweep",
+        title=f"{kite_name}_beta_sweep",
         data_type=".pdf",
         save_path=save_folder,
         is_save=True,
@@ -211,13 +199,8 @@ def main():
     print("=" * 60)
     print(f"Configuration file: {config_file_path.name}")
     print(f"Number of panels: {n_panels}")
-    if (
-        hasattr(body_aero_masure_with_bridles, "bridles")
-        and body_aero_masure_with_bridles.bridles
-    ):
-        print(
-            f"Bridle lines: {len(body_aero_masure_with_bridles.bridles.bridle_lines)}"
-        )
+    if hasattr(body_aero_with_bridles, "bridles") and body_aero_with_bridles.bridles:
+        print(f"Bridle lines: {len(body_aero_with_bridles.bridles.bridle_lines)}")
     print(f"Results saved to: {save_folder}")
     print("=" * 60)
 
@@ -225,16 +208,16 @@ def main():
     print(f"\nSingle point analysis at α={angle_of_attack}°, β={side_slip}°:")
 
     # Solve for current conditions
-    results_masure = solver_base_version.solve(body_aero_masure)
-    results_with_bridles = solver_base_version.solve(body_aero_masure_with_bridles)
+    results_masure = solver_base_version.solve(body_aero)
+    results_with_bridles = solver_base_version.solve(body_aero_with_bridles)
 
-    print(f"Masure Regression:")
+    print(f"Coefficients:")
     print(f"  CL = {results_masure['cl']:.4f}")
     print(f"  CD = {results_masure['cd']:.4f}")
     print(f"  CS = {results_masure['cs']:.4f}")
     print(f"  L/D = {results_masure['cl']/results_masure['cd']:.2f}")
 
-    print(f"Masure Regression with Bridles:")
+    print(f"Coefficients with Bridles:")
     print(f"  CL = {results_with_bridles['cl']:.4f}")
     print(f"  CD = {results_with_bridles['cd']:.4f}")
     print(f"  CS = {results_with_bridles['cs']:.4f}")

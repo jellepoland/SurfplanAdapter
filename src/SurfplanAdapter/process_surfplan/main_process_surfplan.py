@@ -6,6 +6,7 @@ from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import
     reading_profile_from_airfoil_dat_files,
 )
 from SurfplanAdapter.plotting import plot_and_save_all_profiles
+import shutil
 
 
 def line_parser(line):
@@ -301,6 +302,7 @@ def correcting_wingtip_by_adding_ribs(
     kite_dir_path,
     n_profiles,
     ribs_data,
+    profile_load_dir=None,  # new argument for fallback
 ):
     ## Preparing LE, TE from the wingtip list
     wingtip = wingtip[::-1]
@@ -312,12 +314,30 @@ def correcting_wingtip_by_adding_ribs(
 
     ## profile of most outer rib thats not the wingtip
 
+    # Ensure the processed profiles directory exists
+    os.makedirs(profile_save_dir, exist_ok=True)
+
+    # Helper to get profile path: prefer processed, fallback to data
+    def get_profile_path(profile_name, profile_save_dir, profile_load_dir):
+        processed_path = Path(profile_save_dir) / profile_name
+        if processed_path.exists():
+            return processed_path
+        elif profile_load_dir is not None:
+            fallback = Path(profile_load_dir) / profile_name
+            if fallback.exists():
+                return fallback
+        raise FileNotFoundError(
+            f"Profile {profile_name} not found in processed or data directory."
+        )
+
+    profile_name_outer = f"prof_{int(n_profiles-1)}.dat"
     profile_outer_rib, point_list_outer_rib = reading_profile_from_airfoil_dat_files(
-        Path(kite_dir_path) / "profiles" / f"prof_{int(n_profiles-1)}.dat",
+        get_profile_path(profile_name_outer, profile_save_dir, profile_load_dir),
         is_return_point_list=True,
     )
+    profile_name_tip = f"prof_{n_profiles}.dat"
     profile_tip, point_list_tip = reading_profile_from_airfoil_dat_files(
-        Path(kite_dir_path) / "profiles" / f"prof_{n_profiles}.dat",
+        get_profile_path(profile_name_tip, profile_save_dir, profile_load_dir),
         is_return_point_list=True,
     )
 
@@ -328,8 +348,10 @@ def correcting_wingtip_by_adding_ribs(
     # saving these again as .dat files
     for i, wingtip_point_list in enumerate(wingtip_point_lists):
         n_profile = n_profiles + i
-        profile_name = f"prof_{n_profile}"
-        with open(Path(profile_save_dir) / f"{profile_name}.dat", "w") as file:
+        profile_name = f"prof_{n_profile}.dat"
+        profile_path = Path(profile_save_dir) / profile_name
+        os.makedirs(profile_path.parent, exist_ok=True)
+        with open(profile_path, "w") as file:
             file.write(f"{profile_name}\n")
             for point in wingtip_point_list:
                 file.write(f"{point[0]} {point[1]}\n")
@@ -528,6 +550,7 @@ def main(
             kite_dir_path,
             n_profiles,
             ribs_data,
+            profile_load_dir=profile_load_dir,  # pass for fallback
         )
 
         ## Loading and saving profiles from load to save
