@@ -72,7 +72,7 @@ wing_airfoils:
   #           Dirty wind tunnel:   4–8':
   #   - polars:':
   #       csv_file_path: Path to polar CSV file (columns: alpha [rad], cl, cd, cm)':
-  #   - masure_regression:':
+  #   - masure_regression:
   #       t, eta, kappa, delta, lamba, phi: Regression parameters':
   #   - inviscid:':
   #       no further data is required':
