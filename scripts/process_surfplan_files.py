@@ -3,7 +3,7 @@ from SurfplanAdapter import generate_geometry_csv_files, generate_wing_yaml
 from SurfplanAdapter.utils import PROJECT_DIR
 
 
-def main(kite_name="V9_60J-Inertia"):
+def main(kite_name="TUDELFT_V3_KITE"):
     """It is crucial that the kite_name matches the name of the surfplan file"""
 
     data_dir = Path(PROJECT_DIR) / "data" / f"{kite_name}"
