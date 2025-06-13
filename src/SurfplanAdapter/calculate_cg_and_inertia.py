@@ -1,11 +1,12 @@
+import yaml
+from pathlib import Path
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from SurfplanAdapter.utils import PROJECT_DIR
 
 
 def find_mass_distributions(
-    file_path: Path,
+    wing_sections,
     total_wing_mass: float,
     canopy_kg_p_sqm: float,
     le_to_strut_mass_ratio: float,
@@ -15,7 +16,7 @@ def find_mass_distributions(
     Calculate the center of gravity (CG) and inertia of the wing based on panel and component masss.
 
     Parameters:
-    file_path (Path): Path to the CSV file containing wing data.
+    wing_sections (list): List of wing sections data from YAML.
     total_wing_mass (float): Total mass of the wing.
     canopy_kg_p_sqm (float): Canopy mass in grams per square meter.
     le_to_strut_mass_ratio (float): Ratio of mass between LE and struts.
@@ -24,14 +25,24 @@ def find_mass_distributions(
     Returns:
     dict: A dictionary containing CG, total mass distribution, and individual component masss.
     """
-    # Read the CSV file
-    data = pd.read_csv(file_path)
-
     # Extract leading edge (LE) and trailing edge (TE) points
-    LE_points = data[["LE_x", "LE_y", "LE_z"]].to_numpy()
-    TE_points = data[["TE_x", "TE_y", "TE_z"]].to_numpy()
-    d_tube = data["d_tube"].to_numpy()
-    is_strut = data["is_strut"].to_numpy()
+    # wing_sections data format: [airfoil_id, LE_x, LE_y, LE_z, TE_x, TE_y, TE_z]
+    LE_points = np.array(
+        [
+            [section[1], section[2], section[3]]  # LE_x, LE_y, LE_z
+            for section in wing_sections
+        ]
+    )
+    TE_points = np.array(
+        [
+            [section[4], section[5], section[6]]  # TE_x, TE_y, TE_z
+            for section in wing_sections
+        ]
+    )
+    # For now, using default values for d_tube and is_strut since they're not in the YAML format
+    # TODO: Add these to the YAML generation if needed
+    d_tube = np.array([0.01 for section in wing_sections])  # Default tube diameter
+    is_strut = np.array([False for section in wing_sections])  # Default: no struts
 
     # Initialize variables
     total_canopy_mass = 0
@@ -417,14 +428,23 @@ def calculate_inertia(nodes, desired_point):
 
 
 def main(
-    file_path,
-    total_wing_mass,
-    canopy_kg_p_sqm,
-    le_to_strut_mass_ratio,
-    sensor_mass,
+    yaml_file_path,
+    total_wing_mass=10.0,
+    canopy_kg_p_sqm=0.05,
+    le_to_strut_mass_ratio=0.7,
+    sensor_mass=0.5,
     desired_point=[0, 0, 0],
     is_show_plot=True,
 ):
+    """
+    Calculate CG and inertia using a config_kite.yaml file.
+    """
+    # Load geometry from YAML
+    with open(yaml_file_path, "r") as f:
+        config = yaml.safe_load(f)
+    # Extract wing_sections data
+    wing_sections = config["wing_sections"]["data"]
+    # Optionally: extract other info from YAML as needed
 
     (
         total_canopy_mass,
@@ -437,7 +457,7 @@ def main(
         is_strut,
         total_area,
     ) = find_mass_distributions(
-        file_path,
+        wing_sections,
         total_wing_mass,
         canopy_kg_p_sqm,
         le_to_strut_mass_ratio,
@@ -492,7 +512,7 @@ def main(
 
 if __name__ == "__main__":
     kite_name = "TUDELFT_V3_LEI_KITE"
-    file_path = Path(PROJECT_DIR) / "processed_data" / "v9" / "geometry.csv"
+    yaml_file_path = Path(PROJECT_DIR) / "processed_data" / "v9" / "config_kite.yaml"
     total_wing_mass = 10.0
     canopy_kg_p_sqm = 0.05
     le_to_strut_mass_ratio = 0.7
@@ -501,7 +521,7 @@ if __name__ == "__main__":
     desired_point = [0, 0, 0]
 
     main(
-        file_path,
+        yaml_file_path,
         total_wing_mass,
         canopy_kg_p_sqm,
         le_to_strut_mass_ratio,
