@@ -26,7 +26,7 @@ def find_mass_distributions(
     dict: A dictionary containing CG, total mass distribution, and individual component masss.
     """
     # Extract leading edge (LE) and trailing edge (TE) points
-    # wing_sections data format: [airfoil_id, LE_x, LE_y, LE_z, TE_x, TE_y, TE_z]
+    # wing_sections data format: [airfoil_id, LE_x, LE_y, LE_z, TE_x, TE_y, TE_z, VUP_x, VUP_y, VUP_z]
     LE_points = np.array(
         [
             [section[1], section[2], section[3]]  # LE_x, LE_y, LE_z
@@ -39,6 +39,7 @@ def find_mass_distributions(
             for section in wing_sections
         ]
     )
+    # VUP points are now available if needed: [section[7], section[8], section[9]]
     # For now, using default values for d_tube and is_strut since they're not in the YAML format
     # TODO: Add these to the YAML generation if needed
     d_tube = np.array([0.01 for section in wing_sections])  # Default tube diameter
@@ -508,24 +509,3 @@ def main(
             TE_points=TE_points,
             is_strut=is_strut,  # so we can draw strut lines
         )
-
-
-if __name__ == "__main__":
-    kite_name = "TUDELFT_V3_LEI_KITE"
-    yaml_file_path = Path(PROJECT_DIR) / "processed_data" / "v9" / "config_kite.yaml"
-    total_wing_mass = 10.0
-    canopy_kg_p_sqm = 0.05
-    le_to_strut_mass_ratio = 0.7
-    sensor_mass = 0.5
-    is_show_plot = True
-    desired_point = [0, 0, 0]
-
-    main(
-        yaml_file_path,
-        total_wing_mass,
-        canopy_kg_p_sqm,
-        le_to_strut_mass_ratio,
-        sensor_mass,
-        desired_point=desired_point,
-        is_show_plot=is_show_plot,
-    )

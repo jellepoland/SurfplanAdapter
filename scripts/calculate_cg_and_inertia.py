@@ -1,5 +1,6 @@
 from pathlib import Path
-from SurfplanAdapter import calculate_cg_and_inertia, generate_wing_yaml
+from SurfplanAdapter import calculate_cg_and_inertia
+from SurfplanAdapter.process_surfplan import generate_wing_yaml
 from SurfplanAdapter.utils import PROJECT_DIR
 
 

@@ -6,11 +6,6 @@ import pandas as pd
 
 from SurfplanAdapter.utils import PROJECT_DIR
 from SurfplanAdapter.process_surfplan import main_process_surfplan
-from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
-    transform_coordinate_system_surfplan_to_VSM,
-)
-
-from SurfplanAdapter.generate_geometry_csv_files import sort_ribs_by_proximity
 
 
 def represent_list(self, data):
@@ -31,40 +26,26 @@ def represent_list(self, data):
     return self.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=False)
 
 
-def generate_wing_sections_data(ribs_data, df_profiles):
+def generate_wing_sections_data(processed_ribs_data):
     """
     Generate wing sections data for YAML output.
 
     Parameters:
-        ribs_data: List of rib dictionaries from main_process_surfplan
-        df_profiles: DataFrame containing profile parameters
+        processed_ribs_data: List of processed rib dictionaries with airfoil_id already assigned
 
     Returns:
         dict: Wing sections data formatted for YAML
     """
-    n_ribs = len(ribs_data)
-    n_profiles = len(df_profiles)
-
     wing_sections_data = []
 
-    for i, rib in enumerate(ribs_data):
+    for rib in processed_ribs_data:
         # Transform coordinates to VSM coordinate system
-        LE = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
-        TE = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
+        LE = rib["LE"]
+        TE = rib["TE"]
+        VUP = rib["VUP"]
 
-        # Get profile index based on the same logic as CSV generation
-        if i < n_profiles:
-            idx = i
-        elif i == n_profiles:
-            idx = n_profiles - 1
-        else:
-            idx = n_ribs - (i + 1)
-
-        profile_i = df_profiles.iloc[idx]
-
-        # Create airfoil_id based on profile name (extract number from prof_X)
-        profile_name = profile_i["profile_name"]
-        airfoil_id = int(profile_name.split("_")[1]) if "_" in profile_name else i + 1
+        # Use the airfoil_id that was already assigned during processing
+        airfoil_id = rib["airfoil_id"]
 
         wing_sections_data.append(
             [
@@ -75,80 +56,118 @@ def generate_wing_sections_data(ribs_data, df_profiles):
                 float(TE[0]),
                 float(TE[1]),
                 float(TE[2]),
+                float(VUP[0]),
+                float(VUP[1]),
+                float(VUP[2]),
             ]
         )
 
     return {
-        "headers": ["airfoil_id", "LE_x", "LE_y", "LE_z", "TE_x", "TE_y", "TE_z"],
+        "headers": [
+            "airfoil_id",
+            "LE_x",
+            "LE_y",
+            "LE_z",
+            "TE_x",
+            "TE_y",
+            "TE_z",
+            "VUP_x",
+            "VUP_y",
+            "VUP_z",
+        ],
         "data": wing_sections_data,
     }
 
 
-def generate_wing_airfoils_data(
-    df_profiles, airfoil_type="masure_regression", profile_load_dir=None
-):
+def generate_wing_airfoils_data(ribs_data, airfoil_type="masure_regression"):
     """
     Generate wing airfoils data for YAML output.
 
     Parameters:
-        df_profiles: DataFrame containing profile parameters
+        ribs_data: List of rib dictionaries containing airfoil_id and profile parameters
         airfoil_type: Type of airfoil data ("polars", "breukels_regression", etc.)
-        profile_load_dir: Path to profile directory for dat files
 
     Returns:
         dict: Wing airfoils data formatted for YAML
     """
     wing_airfoils_data = []
 
-    for idx, profile in df_profiles.iterrows():
-        profile_name = profile["profile_name"]
-        airfoil_id = int(profile_name.split("_")[1]) if "_" in profile_name else idx + 1
+    # Extract unique airfoil_ids and their corresponding rib data
+    unique_airfoils = {}
+    for rib in ribs_data:
+        airfoil_id = rib["airfoil_id"]
+        if airfoil_id not in unique_airfoils:
+            unique_airfoils[airfoil_id] = rib
+
+    # Sort by airfoil_id to ensure consistent ordering
+    for airfoil_id in sorted(unique_airfoils.keys()):
+        rib = unique_airfoils[airfoil_id]
+
+        # Create common meta_parameters for all types
+        meta_parameters = {
+            "d_tube_from_surfplan_txt": float(rib["d_tube_from_surfplan_txt"]),
+            "d_tube_from_dat": float(rib["d_tube_from_dat"]),
+            "eta": float(rib["x_max_camber"]),  # eta is x-position of max camber
+            "kappa": float(rib["y_max_camber"]),  # kappa is camber magnitude
+            "delta": float(rib["TE_angle"]),  # delta is trailing edge angle
+            "chord": float(rib["chord"]),
+            "is_strut": bool(rib["is_strut"]),
+        }
 
         if airfoil_type == "polars":
             # For polars, reference CSV file
-            info_dict = {"csv_file_path": f"2D_polars_CFD/{airfoil_id}.csv"}
+            info_dict = {
+                "csv_file_path": f"2D_polars_CFD/{airfoil_id}.csv",
+                "meta_parameters": meta_parameters,
+            }
         elif airfoil_type == "breukels_regression":
-            # For Breukels regression, use t and kappa from profile data
-            info_dict = {"t": float(profile["t"]), "kappa": float(profile["kappa"])}
+            # For Breukels regression, use t and kappa from rib data
+            info_dict = {
+                "t": float(
+                    rib["d_tube_from_dat"]
+                ),  # Use d_tube_from_dat for fitting accuracy
+                "kappa": float(
+                    rib["y_max_camber"]
+                ),  # y_max_camber is the camber magnitude
+                "meta_parameters": meta_parameters,
+            }
         elif airfoil_type == "neuralfoil":
             # For NeuralFoil, reference the dat file and include all available parameters
-            dat_file_path = f"profiles/{profile_name}.dat"
             info_dict = {
-                "dat_file_path": dat_file_path,
+                "dat_file_path": f"profiles/prof_{airfoil_id}.dat",
                 "model_size": "xxxlarge",
                 "xtr_lower": 0.1,
                 "xtr_upper": 0.1,
                 "n_crit": 9,
-                # Include additional profile parameters as metadata
-                "meta_parameters": {
-                    "t": float(profile["t"]),
-                    "eta": float(profile["eta"]),
-                    "kappa": float(profile["kappa"]),
-                    "delta": float(profile["delta"]),
-                    "chord": float(profile["c"]) if "c" in profile else None,
-                },
+                "meta_parameters": meta_parameters,
             }
         elif airfoil_type == "masure_regression":
             # For Masure regression, use all available parameters and reference .dat file
             info_dict = {
-                "dat_file_path": f"profiles/{profile_name}.dat",
-                "t": float(profile["t"]),
-                "eta": float(profile["eta"]),
-                "kappa": float(profile["kappa"]),
-                "delta": float(profile["delta"]),
-                "lamba": 0.0,  # Default value, not typically in CSV
-                "phi": 0.0,  # Default value, not typically in CSV
-                "chord": float(profile["c"]) if "c" in profile else None,
+                "dat_file_path": f"profiles/prof_{airfoil_id}.dat",
+                "t": float(
+                    rib["d_tube_from_dat"]
+                ),  # Use d_tube_from_dat for fitting accuracy
+                "eta": float(rib["x_max_camber"]),
+                "kappa": float(rib["y_max_camber"]),
+                "delta": float(rib["TE_angle"]),
+                "lamba": 0.0,  # Default value, not typically available in rib data
+                "phi": 0.0,  # Default value, not typically available in rib data
+                "chord": float(rib["chord"]),
+                "meta_parameters": meta_parameters,
             }
         else:
             # Default case - include .dat file and available parameters
             info_dict = {
-                "dat_file_path": f"profiles/{profile_name}.dat",
-                "t": float(profile["t"]) if "t" in profile else None,
-                "eta": float(profile["eta"]) if "eta" in profile else None,
-                "kappa": float(profile["kappa"]) if "kappa" in profile else None,
-                "delta": float(profile["delta"]) if "delta" in profile else None,
-                "chord": float(profile["c"]) if "c" in profile else None,
+                "dat_file_path": f"profiles/prof_{airfoil_id}.dat",
+                "t": float(
+                    rib["d_tube_from_dat"]
+                ),  # Use d_tube_from_dat for fitting accuracy
+                "eta": float(rib["x_max_camber"]),
+                "kappa": float(rib["y_max_camber"]),
+                "delta": float(rib["TE_angle"]),
+                "chord": float(rib["chord"]),
+                "meta_parameters": meta_parameters,
             }
 
         wing_airfoils_data.append([airfoil_id, airfoil_type, info_dict])
@@ -362,35 +381,11 @@ def main(
         surfplan_txt_file_path=path_surfplan_file,
         profile_load_dir=profile_load_dir,
         profile_save_dir=profile_save_dir,
-        is_make_plots=False,
-    )
-
-    # Transform bridle lines to VSM coordinate system
-    if len(bridle_lines) > 0:
-        bridle_lines = [
-            [
-                transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),  # point1
-                transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),  # point2
-                bridle_line[2],  # name (string)
-                bridle_line[3],  # length (float)
-                bridle_line[4],  # diameter (float)
-            ]
-            for bridle_line in bridle_lines
-        ]
-
-    # Sort ribs data using existing logic
-    ribs_data = sort_ribs_by_proximity(ribs_data)
-
-    # Load profile parameters
-    df_profiles = pd.read_csv(
-        profile_save_dir / "profile_parameters.csv", index_col="profile_number"
     )
 
     # Generate YAML data structures
-    wing_sections = generate_wing_sections_data(ribs_data, df_profiles)
-    wing_airfoils = generate_wing_airfoils_data(
-        df_profiles, airfoil_type, profile_load_dir
-    )
+    wing_sections = generate_wing_sections_data(ribs_data)
+    wing_airfoils = generate_wing_airfoils_data(ribs_data, airfoil_type)
 
     # Create the complete YAML structure
     yaml_data = {
@@ -553,23 +548,3 @@ def main(
     print(f'Wing airfoils: {len(wing_airfoils["data"])}')
     if len(bridle_lines) > 0:
         print(f"Bridle lines: {len(bridle_lines)}")
-
-
-if __name__ == "__main__":
-    from SurfplanAdapter.utils import PROJECT_DIR
-
-    # Example usage - same as process_surfplan_files.py
-    data_folder_name = "TUDELFT_V3_KITE"
-    kite_file_name = "TUDELFT_V3_KITE_3d"
-
-    data_dir = Path(PROJECT_DIR) / "data" / f"{data_folder_name}"
-    path_surfplan_file = Path(data_dir) / f"{kite_file_name}.txt"
-    save_dir = Path(PROJECT_DIR) / "processed_data" / f"{data_folder_name}"
-
-    main(
-        path_surfplan_file=path_surfplan_file,
-        save_dir=save_dir,
-        profile_load_dir=Path(data_dir) / "profiles",
-        profile_save_dir=Path(save_dir) / "profiles",
-        airfoil_type="masure_regression",  # Default: masure_regression with .dat files and parameters
-    )
