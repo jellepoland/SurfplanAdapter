@@ -147,7 +147,7 @@ def plot_airfoils_3d_from_yaml(
                 world_coords[:, 0],
                 world_coords[:, 1],
                 world_coords[:, 2],
-                "b-",
+                "black",
                 linewidth=1,
                 alpha=0.7,
             )
@@ -158,8 +158,8 @@ def plot_airfoils_3d_from_yaml(
                     [le_x],
                     [le_y],
                     [le_z],
-                    c="green",
-                    s=30,
+                    c="blue",
+                    s=10,
                     alpha=0.8,
                     label="Leading Edge",
                 )
@@ -168,23 +168,34 @@ def plot_airfoils_3d_from_yaml(
                     [te_y],
                     [te_z],
                     c="red",
-                    s=30,
+                    s=10,
                     alpha=0.8,
                     label="Trailing Edge",
                 )
             else:
-                ax.scatter([le_x], [le_y], [le_z], c="green", s=10, alpha=0.8)
+                ax.scatter([le_x], [le_y], [le_z], c="blue", s=10, alpha=0.8)
                 ax.scatter([te_x], [te_y], [te_z], c="red", s=10, alpha=0.8)
 
             # Plot chord line
-            ax.plot(
-                [le_x, te_x],
-                [le_y, te_y],
-                [le_z, te_z],
-                "k--",
-                linewidth=0.5,
-                alpha=0.5,
-            )
+            if i == 0:
+                ax.plot(
+                    [le_x, te_x],
+                    [le_y, te_y],
+                    [le_z, te_z],
+                    "k--",
+                    linewidth=0.5,
+                    alpha=0.5,
+                    label="Chord Line",
+                )
+            else:
+                ax.plot(
+                    [le_x, te_x],
+                    [le_y, te_y],
+                    [le_z, te_z],
+                    "k--",
+                    linewidth=0.5,
+                    alpha=0.5,
+                )
 
         except Exception as e:
             print(f"Error processing airfoil {airfoil_id}: {e}")
