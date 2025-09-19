@@ -1,10 +1,10 @@
 from pathlib import Path
 from SurfplanAdapter import calculate_cg_and_inertia
-from SurfplanAdapter.process_surfplan import generate_wing_yaml
-from SurfplanAdapter.utils import PROJECT_DIR
+from SurfplanAdapter.generate_yaml import main_generate_yaml
+from scripts.utils import PROJECT_DIR
 
 
-def main(
+def main_generate_yaml(
     kite_name="TUDELFT_V3_KITE",
     total_wing_mass=10.0,
     canopy_kg_p_sqm=0.05,
@@ -21,7 +21,7 @@ def main(
 
     # Generate YAML config if it does not exist
     if not yaml_file_path.exists():
-        generate_wing_yaml.main(
+        main_generate_yaml.main(
             path_surfplan_file=path_surfplan_file,
             save_dir=save_dir,
             profile_load_dir=Path(data_dir) / "profiles",
@@ -41,4 +41,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    main_generate_yaml()
