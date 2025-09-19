@@ -1,0 +1,13 @@
+{
+  "input_file": "/home/jellepoland/ownCloud/phd/code/SurfplanAdapter/data/TUDELFT_V3_KITE/profiles/prof_1.dat",
+  "optimal_lambda": 0.1,
+  "extracted_parameters": {
+    "t": 0.07690937819557428,
+    "eta": 0.175,
+    "kappa": 0.095,
+    "delta": 7.236059407808,
+    "phi": 0.65
+  },
+  "generated_profile_path": "processed_data/TUDELFT_V3_KITE/profiles/prof_1_lambda_0.100.dat",
+  "comparison_plot_path": "processed_data/TUDELFT_V3_KITE/profiles/TUDELFT_V3_KITE_prof_1_lambda_comparison.png"
+}

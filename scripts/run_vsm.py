@@ -6,7 +6,8 @@ from VSM.plotting import plot_polars
 from VSM.plot_geometry_matplotlib import plot_geometry
 from VSM.plot_geometry_plotly import interactive_plot
 import numpy as np
-from SurfplanAdapter.utils import PROJECT_DIR
+
+PROJECT_DIR = Path(__file__).resolve().parent
 
 
 def main(kite_name="TUDELFT_V3_KITE"):

@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from SurfplanAdapter.utils import PROJECT_DIR
+from scripts.utils import PROJECT_DIR
 
 
 def find_mass_distributions(

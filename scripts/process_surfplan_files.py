@@ -1,10 +1,13 @@
 from pathlib import Path
 from SurfplanAdapter.plotting import plot_airfoils_3d_from_yaml
-from SurfplanAdapter.process_surfplan import generate_wing_yaml
-from SurfplanAdapter.utils import PROJECT_DIR
+from SurfplanAdapter.generate_yaml import main_generate_yaml
+from SurfplanAdapter.process_wing import main_process_wing
+from SurfplanAdapter.process_bridle_lines import main_process_bridle_lines
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 
-def main(kite_name="TUDELFT_V3_KITE"):
+def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
     """It is crucial that the kite_name matches the name of the surfplan file"""
 
     data_dir = Path(PROJECT_DIR) / "data" / f"{kite_name}"
@@ -18,16 +21,29 @@ def main(kite_name="TUDELFT_V3_KITE"):
             "It is essential that the kite_name matches the name of the surfplan file."
         )
 
-    generate_wing_yaml.main(
-        path_surfplan_file=path_surfplan_file,
-        save_dir=save_dir,
-        profile_load_dir=Path(data_dir) / "profiles",
-        profile_save_dir=Path(save_dir) / "profiles",
-        airfoil_type="neuralfoil",  # Default: masure_regression with .dat files and parameters
+    profile_load_dir = Path(data_dir) / "profiles"
+    profile_save_dir = Path(save_dir) / "profiles"
+
+    # process wing
+    ribs_data = main_process_wing.main(
+        surfplan_txt_file_path=path_surfplan_file,
+        profile_load_dir=profile_load_dir,
+        profile_save_dir=profile_save_dir,
+    )
+
+    # process bridle lines
+    bridle_lines = main_process_bridle_lines.main(path_surfplan_file)
+
+    # generate yaml file
+    yaml_file_path = save_dir / "config_kite.yaml"
+    main_generate_yaml.main(
+        ribs_data=ribs_data,
+        bridle_lines=bridle_lines,
+        yaml_file_path=yaml_file_path,
+        airfoil_type=airfoil_type,
     )
 
     # Generate 3D plot of airfoils from the created YAML file
-    yaml_file_path = save_dir / "config_kite.yaml"
 
     if yaml_file_path.exists():
         print(f"\nGenerating 3D airfoil plot...")
@@ -35,7 +51,7 @@ def main(kite_name="TUDELFT_V3_KITE"):
             plot_airfoils_3d_from_yaml(
                 yaml_file_path=yaml_file_path,
                 profile_base_dir=Path(yaml_file_path.parent / "profiles"),
-                save_path=save_dir / "3d_airfoil_plot.png",
+                # save_path=save_dir / "3d_airfoil_plot.png", # if given it will also save
                 show_plot=True,  # Set to False to avoid blocking in automated runs
             )
             print(f"3D airfoil plot saved to: {save_dir / '3d_airfoil_plot.png'}")

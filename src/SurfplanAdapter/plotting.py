@@ -5,11 +5,15 @@ import pandas as pd
 import numpy as np
 import yaml
 from pathlib import Path
-from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
-    reading_profile_from_airfoil_dat_files,
-)
-from SurfplanAdapter.process_surfplan.transform_coordinate_system_surfplan_to_VSM import (
+
+# from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
+#     reading_profile_from_airfoil_dat_files,
+# )
+from SurfplanAdapter.utils import (
     transform_coordinate_system_surfplan_to_VSM,
+)
+from SurfplanAdapter.find_airfoil_parameters.main_find_airfoil_parameters import (
+    get_fitted_airfoil_parameters,
 )
 
 
@@ -290,9 +294,19 @@ def plot_profiles(
     None or tuple: This function saves the plot. Optionally returns profile parameters.
     """
     # Read profile characteristics from the file
-    profile = reading_profile_from_airfoil_dat_files(
-        filepath, is_calculate_d_tube_from_dat=False
-    )
+    # profile = reading_profile_from_airfoil_dat_files(
+    # filepath, is_calculate_d_tube_from_dat=False
+    # )
+
+    profile, point_list, profile_name = get_fitted_airfoil_parameters(filepath)
+    profile = {
+        "name": profile_name,
+        "x_max_camber": profile["eta_val"],
+        "y_max_camber": profile["kappa_val"],
+        "TE_angle": profile["delta_val"],
+        "d_tube_from_dat": profile["t_val"],
+    }
+
     profile_name = profile["name"]
 
     # Open the file and read all lines for plotting
@@ -379,221 +393,6 @@ def plot_profiles(
             profile["TE_angle"],
             c,
         )
-
-
-# def plot_and_save_all_profiles(profile_save_dir, ribs_data):
-
-#     if not profile_save_dir.is_dir():
-#         raise ValueError(f"Directory {profile_save_dir} does not exist.")
-
-#     # Create a list to store the data for each profile
-#     profile_data = []
-
-#     i = 0
-#     for file_name in profile_save_dir.iterdir():
-#         # Check if the file name starts with "prof" and ends with ".dat"
-#         if file_name.name.startswith("prof") and file_name.name.endswith(".dat"):
-#             i += 1
-#             rib = ribs_data[i]
-#             # print(f"rib: {rib}")
-#             t, eta, kappa, delta, c = plot_profiles(
-#                 file_name,
-#                 profile_save_dir=profile_save_dir,
-#                 t=rib["d_tube"],
-#                 c=rib["chord"],
-#                 is_with_return_t_eta_kappa_delta_c=True,
-#             )
-
-#             # Add data to our list
-#             profile_data.append(
-#                 {
-#                     "profile_name": file_name.stem,
-#                     "t": t,
-#                     "eta": eta,
-#                     "kappa": kappa,
-#                     "delta": delta,
-#                     "c": c,
-#                 }
-#             )
-
-#     # Convert the list to a pandas DataFrame
-#     if profile_data:
-#         df = pd.DataFrame(profile_data)
-
-#         # sort on last str in profile_name
-#         df["profile_number"] = df["profile_name"].str.split("_").str[-1].astype(int)
-#         df = df.sort_values("profile_number")
-
-#         # reshuffle the columns
-#         df = df[
-#             [
-#                 "profile_number",
-#                 "profile_name",
-#                 "t",
-#                 "eta",
-#                 "kappa",
-#                 "delta",
-#                 "c",
-#             ]
-#         ]
-
-#         # Save the DataFrame to a CSV file
-#         csv_path = profile_save_dir / "profile_parameters.csv"
-#         df.to_csv(csv_path, index=False)
-#         print(f"Profile parameters saved to {csv_path}")
-#     else:
-#         print("No profiles found to save.")
-
-
-# def plot_and_save_all_profiles_from_yaml(yaml_file_path, profile_base_dir):
-#     """
-#     Plot and save all airfoil profiles using data from YAML configuration file.
-
-#     This function reads profile parameters from the YAML wing_airfoils section
-#     and plots each .dat file found in the profile directory.
-
-#     Parameters:
-#         yaml_file_path (str or Path): Path to the YAML configuration file
-#         profile_base_dir (str or Path): Directory containing the profile .dat files
-
-#     Returns:
-#         None: This function plots all profiles and saves them as PNG files
-#     """
-#     yaml_file_path = Path(yaml_file_path)
-#     profile_base_dir = Path(profile_base_dir)
-
-#     if not profile_base_dir.is_dir():
-#         raise ValueError(f"Directory {profile_base_dir} does not exist.")
-
-#     # Load YAML configuration
-#     with open(yaml_file_path, "r") as f:
-#         config = yaml.safe_load(f)
-
-#     # Extract wing airfoils data
-#     wing_airfoils = config["wing_airfoils"]
-#     wing_airfoils_data = wing_airfoils["data"]
-#     headers = wing_airfoils["headers"]
-
-#     # Create mapping from headers to indices
-#     header_map = {header: idx for idx, header in enumerate(headers)}
-
-#     # Create a dictionary to map airfoil_id to profile parameters
-#     airfoil_params = {}
-#     for airfoil_data in wing_airfoils_data:
-#         airfoil_id = airfoil_data[header_map["airfoil_id"]]
-#         info_dict = airfoil_data[header_map["info_dict"]]
-
-#         # Extract parameters from meta_parameters or direct info_dict
-#         if "meta_parameters" in info_dict:
-#             meta_params = info_dict["meta_parameters"]
-#             t = meta_params.get(
-#                 "t", 0.1
-#             )  # tube diameter to chord ratio (non-dimensional)
-#             chord = meta_params.get("chord", 1.0)  # chord length in meters
-#         else:
-#             # Fallback to direct parameters
-#             t = info_dict.get("t", 0.1)
-#             chord = info_dict.get("chord", 1.0)
-
-#         airfoil_params[airfoil_id] = {"t": t, "chord": chord}
-
-#     print(f"Found {len(airfoil_params)} airfoil parameter sets in YAML")
-
-#     # Create a list to store the data for each profile
-#     profile_data = []
-
-#     # Iterate through all .dat files in the profile directory, sorted numerically
-#     def extract_airfoil_number(file_path):
-#         """Extract the numeric part from prof_X.dat filename for sorting"""
-#         try:
-#             return int(file_path.stem.split("_")[1])
-#         except (IndexError, ValueError):
-#             return float("inf")  # Put invalid filenames at the end
-
-#     for file_path in sorted(
-#         profile_base_dir.glob("prof_*.dat"), key=extract_airfoil_number
-#     ):
-#         profile_name = file_path.stem
-
-#         # Extract airfoil_id from filename (e.g., prof_1.dat -> 1)
-#         try:
-#             airfoil_id = int(profile_name.split("_")[1])
-#         except (IndexError, ValueError):
-#             print(
-#                 f"Warning: Could not extract airfoil_id from {profile_name}, skipping"
-#             )
-#             continue
-
-#         # Get parameters for this airfoil
-#         if airfoil_id not in airfoil_params:
-#             print(
-#                 f"Warning: No parameters found for airfoil_id {airfoil_id}, using defaults"
-#             )
-#             t = 0.1
-#             chord = 1.0
-#         else:
-#             t = airfoil_params[airfoil_id]["t"]
-#             chord = airfoil_params[airfoil_id]["chord"]
-
-#         print(f"Plotting {profile_name} with t={t:.4f}, chord={chord:.4f}")
-
-#         try:
-#             # Plot the profile and get characteristics
-#             t_returned, eta, kappa, delta, c_returned = plot_profiles(
-#                 file_path,
-#                 profile_save_dir=profile_base_dir,
-#                 t=t,
-#                 c=chord,
-#                 is_with_return_t_eta_kappa_delta_c=True,
-#             )
-
-#             # Add data to our list
-#             profile_data.append(
-#                 {
-#                     "profile_name": profile_name,
-#                     "airfoil_id": airfoil_id,
-#                     "t": t_returned,
-#                     "eta": eta,
-#                     "kappa": kappa,
-#                     "delta": delta,
-#                     "c": c_returned,
-#                 }
-#             )
-
-#         except (FileNotFoundError, ValueError, KeyError) as e:
-#             print(f"Error plotting {profile_name}: {e}")
-#             continue
-#         except IOError as e:
-#             print(f"IO error when plotting {profile_name}: {e}")
-#             continue
-
-#     # # Convert the list to a pandas DataFrame and save
-#     # if profile_data:
-#     #     df = pd.DataFrame(profile_data)
-
-#     #     # Sort by airfoil_id
-#     #     df = df.sort_values("airfoil_id")
-
-#     #     # Reorder columns
-#     #     df = df[
-#     #         [
-#     #             "airfoil_id",
-#     #             "profile_name",
-#     #             "t",
-#     #             "eta",
-#     #             "kappa",
-#     #             "delta",
-#     #             "c",
-#     #         ]
-#     #     ]
-
-#     #     # Save the DataFrame to a CSV file
-#     #     csv_path = profile_base_dir / "profile_parameters_from_yaml.csv"
-#     #     df.to_csv(csv_path, index=False)
-#     #     print(f"Profile parameters saved to {csv_path}")
-#     #     print(f"Generated {len(profile_data)} profile plots")
-#     # else:
-#     #     print("No profiles found to save.")
 
 
 def plot_and_save_all_profiles_from_ribs_data(ribs_data, profile_base_dir):
