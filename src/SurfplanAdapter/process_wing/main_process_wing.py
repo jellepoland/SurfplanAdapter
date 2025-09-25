@@ -237,7 +237,12 @@ def read_lines(surfplan_txt_file_path: Path):
             if line.isdigit():
                 n_struts = int(line)  # Number of strut entries
                 continue
-            values = list(map(float, line.replace(",", ".").split(";")))
+            if ";" in line:
+                values = list(map(float, line.replace(",", ".").split(";")))
+            elif "." in line:
+                values = list(map(float, line.split(",")))
+            else:
+                raise ValueError("Unexpected decimal format in strut line.")
             if len(values) == 4:
                 center = np.array(values[0:3])  # Strut center position (X, Y, Z)
                 diameter = values[3]  # Strut diameter
