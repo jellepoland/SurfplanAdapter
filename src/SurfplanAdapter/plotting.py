@@ -203,7 +203,7 @@ def plot_airfoils_3d_from_yaml(
             y_coords,
             z_coords,
             c="orange",
-            s=20,
+            s=10,
             alpha=0.7,
             label="Bridle Nodes",
         )
@@ -234,8 +234,8 @@ def plot_airfoils_3d_from_yaml(
                     [p1[1], p2[1]],
                     [p1[2], p2[2]],
                     c="orange",
-                    alpha=0.8,
-                    linewidth=2,
+                    alpha=0.7,
+                    linewidth=1,
                     label=None,
                 )
 
