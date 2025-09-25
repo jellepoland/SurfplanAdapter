@@ -129,7 +129,7 @@ def main(
     wing_sections = generate_wing_sections_data.main(ribs_data)
     wing_airfoils = generate_wing_airfoils_data.main(ribs_data, airfoil_type)
     yaml_data = create_wing_dict(wing_sections, wing_airfoils)
-    # save wing only to aero_geometry
+    # save wing only to aero_geometrygenerate_bridle_connections_data
     utils.save_to_yaml(yaml_data, f"{yaml_file_path.parent}/{wing_yaml}")
 
     # Add bridle data if available
@@ -137,7 +137,7 @@ def main(
         yaml_data[" "] = None  # Empty line before bridle_nodes
         bridle_nodes = generate_bridle_nodes_data.main(bridle_lines)
         bridle_connections = generate_bridle_connections_data.main(
-            bridle_lines, bridle_nodes, len(wing_sections["data"])
+            bridle_lines, bridle_nodes, 0
         )
         bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
 

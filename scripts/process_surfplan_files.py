@@ -1,5 +1,8 @@
 from pathlib import Path
-from SurfplanAdapter.plotting import plot_airfoils_3d_from_yaml
+from SurfplanAdapter.plotting import (
+    plot_airfoils_3d_from_yaml,
+    plot_struc_geometry_yaml,
+)
 from SurfplanAdapter.generate_yaml import main_generate_yaml
 from SurfplanAdapter.process_wing import main_process_wing
 from SurfplanAdapter.process_bridle_lines import main_process_bridle_lines
@@ -36,6 +39,7 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
 
     # generate yaml file
     yaml_file_path = save_dir / "config_kite.yaml"
+
     main_generate_yaml.main(
         ribs_data=ribs_data,
         bridle_lines=bridle_lines,
@@ -44,23 +48,13 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
     )
 
     # Generate 3D plot of airfoils from the created YAML file
-    if yaml_file_path.exists():
-        print(f"\nGenerating 3D airfoil plot...")
-        try:
-            plot_airfoils_3d_from_yaml(
-                yaml_file_path=yaml_file_path,
-                profile_base_dir=Path(yaml_file_path.parent / "profiles"),
-                save_path=save_dir
-                / "3d_airfoil_plot.png",  # if given it will also save
-                show_plot=False,  # Set to False to avoid blocking in automated runs
-            )
-            print(f"3D airfoil plot saved to: {save_dir / '3d_airfoil_plot.png'}")
-        except Exception as e:
-            print(f"Warning: Could not generate 3D airfoil plot: {e}")
-    else:
-        print(
-            f"Warning: YAML file {yaml_file_path} not found, skipping 3D plot generation"
-        )
+    plot_struc_geometry_yaml(Path(save_dir) / "struc_geometry.yaml")
+    plot_airfoils_3d_from_yaml(
+        yaml_file_path=yaml_file_path,
+        profile_base_dir=Path(yaml_file_path.parent / "profiles"),
+        save_path=save_dir / "3d_airfoil_plot.png",  # if given it will also save
+        show_plot=True,  # Set to False to avoid blocking in automated runs
+    )
 
 
 if __name__ == "__main__":

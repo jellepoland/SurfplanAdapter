@@ -24,14 +24,38 @@ def main(filepath):
         list: A list of bridle lines, each as [point1, point2, name, length, diameter].
               If a field is empty, default values are used.
     """
+    # Define which column indices contain numeric data that need cleaning
+    # TopX,Y,Z (0,1,2), BottomX,Y,Z (3,4,5), Length (7), Diameter (9)
+    NUMERIC_IDXS = {0, 1, 2, 3, 4, 5, 7, 9}
+
+    def _num_clean(s: str) -> str:
+        """Clean numeric strings: convert comma to dot and handle malformed floats."""
+        s = s.strip()
+        if not s:
+            return s
+        # decimal comma → dot
+        s = s.replace(",", ".")
+        # collapse multiple dots in malformed numeric tokens (e.g., '12.3.4' → '12.34')
+        if s.count(".") > 1:
+            i = s.find(".")
+            s = s[: i + 1] + s[i + 1 :].replace(".", "")
+        return s
+
+    def _to_float(s, default):
+        """Convert string to float with explicit default handling."""
+        try:
+            return float(s) if s not in (None, "") else default
+        except ValueError:
+            return default
+
     bridle_lines = []
     in_bridle_section = False
     header_skipped = False
 
-    with open(filepath, "r") as file:
+    with open(filepath, "r", encoding="utf-8") as file:
         lines = file.readlines()
 
-    for line_num, line in enumerate(lines):
+    for line in lines:
         line = line.strip()
         if not line:
             continue
@@ -48,26 +72,20 @@ def main(filepath):
                 header_skipped = True
                 continue
 
-            # If the line does not contain a semicolon, assume the bridle section has ended.
+            # If the line does not contain a semicolon, end the bridle section
+            # but continue scanning (don't break) in case there are more sections
             if ";" not in line:
-                break
+                in_bridle_section = False
+                continue
 
-            # For bridle lines, we need to preserve all columns including empty ones
-            # Split by semicolon and clean each part, but keep all parts
+            # For bridle lines, split by semicolon and clean only numeric columns
             raw_parts = line.split(";")
             cleaned_parts = []
-            for part in raw_parts:
+            for i, part in enumerate(raw_parts):
                 part = part.strip()
-                if part and any(char.isdigit() for char in part):
-                    # Convert comma to period for decimal numbers
-                    part = part.replace(",", ".")
-                    # Handle multiple periods in numbers (malformed floats)
-                    if part.count(".") > 1:
-                        first_period = part.find(".")
-                        if first_period != -1:
-                            before_period = part[: first_period + 1]
-                            after_period = part[first_period + 1 :].replace(".", "")
-                            part = before_period + after_period
+                if i in NUMERIC_IDXS:
+                    part = _num_clean(part)
+                # else: leave text fields (Name, Material) exactly as-is
                 cleaned_parts.append(part)
 
             # Expecting at least 10 columns based on the header:
@@ -83,28 +101,20 @@ def main(filepath):
             except ValueError:
                 continue
 
-            # Extract name from column 7 (index 6)
+            # Extract name from column 7 (index 6) - keep exactly as-is
             name = (
                 cleaned_parts[6].strip()
-                if len(cleaned_parts) > 6
+                if len(cleaned_parts) > 6 and cleaned_parts[6].strip()
                 else f"line_{len(bridle_lines)+1}"
             )
 
-            # Extract length from column 8 (index 7)
-            length_str = cleaned_parts[7] if len(cleaned_parts) > 7 else "0"
-            try:
-                length = float(length_str) if length_str else 0.0
-            except ValueError:
-                length = 0.0
-
-            # The diameter is expected to be in the 10th column (index 9).
-            diam_str = cleaned_parts[9] if len(cleaned_parts) > 9 else "0"
-            try:
-                diameter = (
-                    float(diam_str) if diam_str else 0.002
-                )  # Default 2mm diameter
-            except ValueError:
-                diameter = 0.002
+            # Extract length and diameter using consistent default handling
+            length = _to_float(
+                cleaned_parts[7] if len(cleaned_parts) > 7 else None, 0.0
+            )
+            diameter = _to_float(
+                cleaned_parts[9] if len(cleaned_parts) > 9 else None, 0.002
+            )
 
             bridle_line = [point1, point2, name, length, diameter]
             bridle_lines.append(bridle_line)

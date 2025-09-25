@@ -58,9 +58,11 @@ def main(bridle_lines, bridle_nodes_data, len_wing_sections):
                         bridle_connections_data.append(
                             [
                                 name,  # Same line name for symmetrical connection
-                                ci_mirrored,  # mirrored start node
-                                cj_mirrored,  # mirrored end node
+                                ci_mirrored
+                                + len_wing_sections,  # mirrored start node with offset
+                                cj_mirrored
+                                + len_wing_sections,  # mirrored end node with offset
                             ]
                         )
 
-    return {"headers": ["name", "ci", "cj", "ck"], "data": bridle_connections_data}
+    return {"headers": ["name", "ci", "cj"], "data": bridle_connections_data}
