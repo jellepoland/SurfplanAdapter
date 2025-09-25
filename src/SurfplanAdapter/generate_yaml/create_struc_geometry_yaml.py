@@ -276,25 +276,28 @@ def main(
     # now deal with the bridle lines
     bridle_nodes = generate_bridle_nodes_data.main(bridle_lines)
 
-    bridle_connections = generate_bridle_connections_data.main(
-        bridle_lines, bridle_nodes, len(wing_particles_data)
-    )
-    bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
-
-    #### the bridle_nodes should be transformed to the new_format
+    #### the bridle_nodes should be transformed to the new_format FIRST
+    #### to preserve the coordinate-to-ID mapping that bridle_connections rely on
 
     # Find the last id used in wing_particles
     last_wing_particle_id = wing_particles_data[-1][0] if wing_particles_data else 0
 
     # Prepare bridle_particles in the new format
+    # IMPORTANT: Preserve the original node ID mapping by using (original_id + offset)
     bridle_particles = {"headers": ["id", "x", "y", "z"], "data": []}
-    next_id = last_wing_particle_id + 1
+    offset = last_wing_particle_id
 
     for node in bridle_nodes["data"]:
-        # node: [id, x, y, z, type]
-        # Only use x, y, z; assign new id
-        bridle_particles["data"].append([next_id, node[1], node[2], node[3]])
-        next_id += 1
+        # node: [original_id, x, y, z, type]
+        # Use original_id + offset to preserve coordinate-to-ID mapping
+        new_id = node[0] + offset
+        bridle_particles["data"].append([new_id, node[1], node[2], node[3]])
+
+    # Now generate bridle_connections using the same offset
+    bridle_connections = generate_bridle_connections_data.main(
+        bridle_lines, bridle_nodes, len(wing_particles_data)
+    )
+    bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
 
     # Compose the final yaml_data dictionary
     struc_geometry_dict = {
