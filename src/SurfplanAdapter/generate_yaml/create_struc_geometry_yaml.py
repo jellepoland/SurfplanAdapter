@@ -275,8 +275,9 @@ def main(
 
     # now deal with the bridle lines
     bridle_nodes = generate_bridle_nodes_data.main(bridle_lines)
+
     bridle_connections = generate_bridle_connections_data.main(
-        bridle_lines, bridle_nodes
+        bridle_lines, bridle_nodes, len(wing_particles_data)
     )
     bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
 

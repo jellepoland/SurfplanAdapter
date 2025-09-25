@@ -1,4 +1,4 @@
-def main(bridle_lines, bridle_nodes_data):
+def main(bridle_lines, bridle_nodes_data, len_wing_sections):
     """
     Generate bridle connections data for YAML output.
     If symmetrical nodes exist (positive y-coordinates), create connections for both sides.
@@ -40,8 +40,8 @@ def main(bridle_lines, bridle_nodes_data):
                 bridle_connections_data.append(
                     [
                         name,  # Use actual line name
-                        ci,  # ci (start node)
-                        cj,  # cj (end node)
+                        ci + len_wing_sections,  # ci (start node)
+                        cj + len_wing_sections,  # cj (end node)
                     ]
                 )
 
