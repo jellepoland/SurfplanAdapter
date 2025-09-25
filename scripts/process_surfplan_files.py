@@ -44,15 +44,15 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
     )
 
     # Generate 3D plot of airfoils from the created YAML file
-
     if yaml_file_path.exists():
         print(f"\nGenerating 3D airfoil plot...")
         try:
             plot_airfoils_3d_from_yaml(
                 yaml_file_path=yaml_file_path,
                 profile_base_dir=Path(yaml_file_path.parent / "profiles"),
-                # save_path=save_dir / "3d_airfoil_plot.png", # if given it will also save
-                show_plot=True,  # Set to False to avoid blocking in automated runs
+                save_path=save_dir
+                / "3d_airfoil_plot.png",  # if given it will also save
+                show_plot=False,  # Set to False to avoid blocking in automated runs
             )
             print(f"3D airfoil plot saved to: {save_dir / '3d_airfoil_plot.png'}")
         except Exception as e:

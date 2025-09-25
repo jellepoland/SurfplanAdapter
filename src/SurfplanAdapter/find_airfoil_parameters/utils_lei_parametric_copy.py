@@ -1,25 +1,16 @@
 """Parametric design of a LEI kite profile"""
 
 import numpy as np
-from math import *
 import matplotlib.pyplot as plt
+from math import *
 from pathlib import Path
 from scipy.optimize import fsolve
 
 
-# Change directory to your pc setup
-root_path = r"dir/"
-fig_file_path = Path(root_path) / "results" / "para_model.png"
-fig_curvature_file_path = Path(root_path) / "results" / "para_model_curvature.png"
-
-# Plot switches
-fillet_automatic = True
-
-# Adapt fillet manually, change following parameters:
-manual_D_fillet1 = 0.04  # LE_fillet distance P61 closest to tube
-manual_D_fillet2 = 0.04  # LE_fillet distance P62
-LE_fillet = 0.12  # Fillet intersection with canopy
-manual_fillet_a = 40  # Tube intersection angle [deg]
+# # Change directory to your pc setup
+# root_path = r"dir/"
+# fig_file_path = Path(root_path) / "results" / "para_model.png"
+# fig_curvature_file_path = Path(root_path) / "results" / "para_model_curvature.png"
 
 
 # Cubic polynomial function
@@ -104,12 +95,10 @@ def LE_seam_angle(tube_size, c_x, c_y):
 
         # If highest point is below c_y
         if maximum <= c_y:
-            # print(angle - 10)
             return np.radians(angle - 10)
 
-    # Fallback: if no angle found, return a default angle (80 degrees)
-    # print(70)  # 80 - 10 = 70
-    return np.radians(70)
+    # If no valid seam angle is found, return a default value
+    return np.radians(80)  # Default to 80 degrees
 
 
 # LEI kite profile coordinates and control points
@@ -117,14 +106,87 @@ def LEI_airfoil(
     tube_size,
     c_x,
     c_y,
-    LE_config,
-    LE_tension,
-    e,
     TE_angle,
     TE_cam_tension,
-    TE_tension,
-    LE_fillet,
+    LE_tension,
+    ##############################
+    # ---- FIXED VALUES ----
+    ##############################
+    TE_tension=0.2,
+    e=0.0005,
+    LE_fillet=0.06,
+    LE_config=3,
+    manual_D_fillet1=0.04,
+    manual_D_fillet2=0.04,
+    manual_fillet_a=40,
+    fillet_automatic=True,
 ):
+    """
+    Generate a complete Leading Edge Inflatable (LEI) kite airfoil profile geometry.
+
+    Creates a parametric LEI airfoil using cubic Bézier curves for smooth transitions
+    between the leading edge tube, airfoil surfaces, trailing edge, and fillet region.
+    Designed for aerodynamic analysis and CFD preprocessing of inflatable kite profiles.
+
+    Parameters
+    ----------
+    Required Design Parameters:
+        tube_size : float
+            t – Diameter of the inflatable leading edge tube (non-dimensionalized by chord)
+        c_x : float
+            η (eta) – Chordwise position of maximum camber (0 to 1); values too close to 0 may yield invalid geometry
+        c_y : float
+            κ (kappa) – Maximum camber height (can be negative); if ≤ tube radius, triggers flat mode
+        TE_angle : float
+            δ (delta) – Trailing edge reflex angle in degrees (negative = downward deflection)
+        TE_cam_tension : float
+            λ (lambda) – Camber tension parameter controlling rear spline curvature at max camber
+        LE_tension : float
+            φ (phi) – Curvature parameter for tube-to-upper-surface transition
+
+    Optional Parameters:
+        TE_tension : float, default=0.2
+            Trailing edge curvature tension
+        e : float, default=0.0005
+            Minimum airfoil thickness (fixed to ensure physical realism)
+        LE_fillet : float, default=0.06
+            Size of the fillet blending the tube into the lower surface
+        LE_config : int, default=3
+            Leading edge Bézier control configuration:
+            - 1: Move only P11 (P12 fixed)
+            - 2: Move only P12 (P11 fixed)
+            - 3: Move both P11 and P12 proportionally
+        manual_D_fillet1 : float, default=0.04
+            Tube-side Bézier control distance (only if fillet_automatic=False)
+        manual_D_fillet2 : float, default=0.04
+            Surface-side Bézier control distance (only if fillet_automatic=False)
+        manual_fillet_a : float, default=40
+            Tube intersection angle in degrees (only if fillet_automatic=False)
+        fillet_automatic : bool, default=True
+            Enable dynamic (automatic) calculation of fillet parameters
+
+    Returns
+    -------
+    tuple
+        29-element tuple containing coordinates, control points, reference data, and derivatives:
+        - Geometry: LE_tube_points, P1, P11, P12, ..., fillet_points
+        - Reference: origin_LE_tube, round_TE_mid, seam_a
+        - Derivatives: LE_dyu_dx, LE_d2yu_dx2, circ_dyu_dx, circ_d2yu_dx2, both_array
+
+    Flat Mode (if c_y ≤ tube_radius)
+    --------------------------------
+        - Leading edge is linearly interpolated to trailing edge
+        - Max camber point is fixed
+        - Camber tension, TE reflex, and tube diameter still influence shape
+        - Ensures structural and geometric simplicity for low-camber profiles
+
+    Notes
+    -----
+        - All dimensions normalized by chord length
+        - Smooth transitions enforced with C1-continuous Bézier curves
+        - Suitable for real-world inflatable kite design with physical constraints
+    """
+
     radius = tube_size / 2  # Radius LE tube
     P2 = np.array([c_x, c_y])  # Max camber position
     P3 = np.array([1, 0])  # TE top side
@@ -137,23 +199,11 @@ def LEI_airfoil(
 
     # Normal configuration with camber
     if not flat:
-        # Apply minimum LE_tension to prevent control point collapse
-        LE_tension_safe = max(LE_tension, 0.1)  # Minimum 10% tension
-
         if P2[1] == radius:
-            # Special case: max camber at tube radius
-            # Add significant vertical offset to prevent perfect horizontal line
-            min_curve_height = (
-                radius * 0.15
-            )  # 15% of radius as minimum curvature (increased from 2%)
             seam_a = np.radians(90)
             P1 = np.array([radius, radius])  # Seam location
-
-            # Modify control points to introduce pronounced curvature
-            P11 = np.array([0.33 * (P2[0] - P1[0]) + P1[0], P1[1] + min_curve_height])
-            P12 = np.array(
-                [0.66 * (P2[0] - P1[0]) + P1[0], P1[1] + min_curve_height * 0.8]
-            )
+            P11 = np.array([0.33 * (P2[0] - P1[0]) + P1[0], P1[1]])
+            P12 = np.array([0.66 * (P2[0] - P1[0]) + P1[0], P1[1]])
 
         else:
             ### LE ###
@@ -173,8 +223,8 @@ def LEI_airfoil(
             if LE_config == 1:
                 P11 = np.array(
                     [
-                        (1 - LE_tension_safe) * P1[0] + LE_tension_safe * P11_max[0],
-                        (1 - LE_tension_safe) * P1[1] + LE_tension_safe * P11_max[1],
+                        (1 - LE_tension) * P1[0] + LE_tension * P11_max[0],
+                        (1 - LE_tension) * P1[1] + LE_tension * P11_max[1],
                     ]
                 )
                 P12 = P11_max
@@ -182,85 +232,19 @@ def LEI_airfoil(
             if LE_config == 2:
                 P11 = P11_max
                 P12 = np.array(
-                    [(P2[0] - P11_max[0]) * (1 - LE_tension_safe) + P11_max[0], P2[1]]
+                    [(P2[0] - P11_max[0]) * (1 - LE_tension) + P11_max[0], P2[1]]
                 )
 
             if LE_config == 3:
                 P11 = np.array(
                     [
-                        (1 - LE_tension_safe) * P1[0] + LE_tension_safe * P11_max[0],
-                        (1 - LE_tension_safe) * P1[1] + LE_tension_safe * P11_max[1],
+                        (1 - LE_tension) * P1[0] + LE_tension * P11_max[0],
+                        (1 - LE_tension) * P1[1] + LE_tension * P11_max[1],
                     ]
                 )
                 P12 = np.array(
-                    [(P2[0] - P11_max[0]) * (1 - LE_tension_safe) + P11_max[0], P2[1]]
+                    [(P2[0] - P11_max[0]) * (1 - LE_tension) + P11_max[0], P2[1]]
                 )
-
-            # Validate curvature and adjust if control points are too collinear
-            def check_and_fix_collinearity(P1, P11, P12, P2, min_curvature=0.01):
-                """Check if control points create straight line and fix if needed."""
-                # Calculate vectors between consecutive points
-                v1 = P11 - P1
-                v2 = P12 - P11
-                v3 = P2 - P12
-
-                # Check cross products to detect collinearity
-                cross1 = abs(v1[0] * v2[1] - v1[1] * v2[0])  # |P1-P11 × P11-P12|
-                cross2 = abs(v2[0] * v3[1] - v2[1] * v3[0])  # |P11-P12 × P12-P2|
-
-                # Also check if the visual curvature is too small
-                chord_length = np.linalg.norm(P2 - P1)
-                expected_curve_height = (
-                    chord_length * 0.05
-                )  # 5% of chord length minimum curve
-
-                # Check actual curve height by measuring perpendicular distance
-                # from line P1-P2 to control points
-                line_vec = P2 - P1
-                line_length = np.linalg.norm(line_vec)
-                if line_length > 0:
-                    line_unit = line_vec / line_length
-
-                    # Distance from P11 to line P1-P2
-                    p11_to_p1 = P11 - P1
-                    p11_proj_length = np.dot(p11_to_p1, line_unit)
-                    p11_proj = P1 + p11_proj_length * line_unit
-                    p11_distance = np.linalg.norm(P11 - p11_proj)
-
-                    # Distance from P12 to line P1-P2
-                    p12_to_p1 = P12 - P1
-                    p12_proj_length = np.dot(p12_to_p1, line_unit)
-                    p12_proj = P1 + p12_proj_length * line_unit
-                    p12_distance = np.linalg.norm(P12 - p12_proj)
-
-                    max_control_distance = max(p11_distance, p12_distance)
-
-                    if (
-                        cross1 < min_curvature
-                        or cross2 < min_curvature
-                        or max_control_distance < expected_curve_height
-                    ):
-                        # Points are too collinear or curve is too flat, add significant curvature
-                        curve_offset = max(
-                            expected_curve_height, chord_length * 0.08
-                        )  # At least 8% of chord
-
-                        # Create more pronounced curve by moving control points further from the line
-                        mid_point = (P1 + P2) * 0.5
-                        perpendicular = np.array(
-                            [-line_unit[1], line_unit[0]]
-                        )  # Perpendicular to P1-P2 line
-
-                        # Move control points away from the straight line
-                        P11_fixed = P11 + perpendicular * curve_offset * 0.8
-                        P12_fixed = P12 + perpendicular * curve_offset * 0.6
-
-                        return P11_fixed, P12_fixed
-
-                return P11, P12
-
-            # Apply curvature validation
-            P11, P12 = check_and_fix_collinearity(P1, P11, P12, P2)
 
         ### TE ###
         P21 = np.array(
@@ -531,9 +515,6 @@ def wall_height(Re):
     u_tau = sqrt(tau_w / rho)  # Friction velocity [m/s]
     yw = (y_plus * mu) / (u_tau * rho) * 1.5  # First cell layer height [m]
     return round(yw, 7)
-
-
-"""plotting"""
 
 
 def plot_airfoil(
@@ -883,13 +864,17 @@ def generate_profile(
         tube_size=t_val,
         c_x=eta_val,
         c_y=kappa_val,
-        LE_config=LE_config,
-        LE_tension=phi_val,
-        e=e,
         TE_angle=delta_val,
         TE_cam_tension=lambda_val,
+        LE_tension=phi_val,
         TE_tension=TE_tension,
+        e=e,
         LE_fillet=LE_fillet,
+        LE_config=LE_config,
+        manual_D_fillet1=manual_D_fillet1,
+        manual_D_fillet2=manual_D_fillet2,
+        manual_fillet_a=manual_fillet_a,
+        fillet_automatic=fillet_automatic,
     )
 
     # Create profile name with parameters
@@ -1139,3 +1124,128 @@ def plot_airfoil_all_points(
         plt.show()
 
     plt.close()
+
+
+def save_profile_as_dat_file(all_points, profile_name, output_file_path, seam_a=None):
+    """
+    Save LEI airfoil profile geometry to a .dat file.
+
+    This function saves the airfoil coordinates to a standard airfoil .dat file
+    format suitable for CFD analysis or other aerodynamic applications.
+
+    Parameters:
+    ----------
+    all_points : numpy.ndarray
+        Array of (x, y) coordinates forming the complete airfoil contour
+    profile_name : str
+        Name identifier for the profile
+    output_file_path : str or Path
+        Path where the .dat file will be saved
+    seam_a : float, optional
+        Seam angle in radians for printing statistics
+
+    Returns:
+    -------
+    str
+        Path to the saved .dat file
+
+    Notes:
+    -----
+    The .dat file contains the complete airfoil contour starting from the leading
+    edge upper surface, proceeding through trailing edge, lower surface, and back
+    to the leading edge, forming a closed profile suitable for mesh generation.
+    """
+
+    # Ensure output directory exists
+    output_path = Path(output_file_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write profile points to dat file
+    with open(output_path, "w") as f:
+        f.write(f"{profile_name}\n")
+        for point in all_points:
+            f.write(f"{point[0]:12.8f} {point[1]:12.8f}\n")
+
+    # Calculate statistics
+    total_points = len(all_points)
+
+    print(f"Profile saved to: {output_path}")
+    print(f"Profile name: {profile_name}")
+    print(f"Total points: {total_points}")
+    if seam_a is not None:
+        print(f"Seam angle: {np.degrees(seam_a):.1f}°")
+
+    return str(output_path)
+
+
+def reading_profile_from_airfoil_dat_files(filepath):
+    """
+    Read airfoil profile data from .dat file and extract key parameters.
+
+    Handles multiple file formats:
+    - Space-separated values (standard .dat format)
+    - Comma-separated values (CSV format)
+    - Files with headers/comments starting with #
+    - Files with 2 or 3 columns (x,y or x,y,z)
+
+    Args:
+        filepath (Path): Path to the .dat file
+
+    Returns:
+        dict: Dictionary containing profile information
+    """
+    with open(filepath, "r") as file:
+        lines = file.readlines()
+
+    # Extract profile name from first non-empty, non-comment line before coordinate data
+    profile_name = "Unnamed Profile"
+    coord_start_idx = 0
+
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:  # Skip empty lines
+            continue
+        elif line.startswith("#"):  # Skip comment lines
+            if profile_name == "Unnamed Profile":
+                # Use comment as profile name (remove # and extra spaces)
+                profile_name = line.lstrip("#").strip()
+            continue
+        elif line[0].isdigit() or line[0] == "-":  # Found coordinate data
+            coord_start_idx = i
+            break
+        else:  # This should be the profile name
+            profile_name = line
+    else:
+        raise ValueError("No valid profile data found in the file.")
+
+    # Extract all coordinate points starting from coordinate data
+    points = []
+    for line in lines[coord_start_idx:]:
+        line = line.strip()
+        if not line or line.startswith("#"):  # Skip empty lines and comments
+            continue
+
+        # Handle both comma-separated and space-separated formats
+        if "," in line:
+            # CSV format
+            parts = line.split(",")
+        else:
+            # Space-separated format
+            parts = line.split()
+
+        if len(parts) >= 2:
+            try:
+                x, y = map(
+                    float, parts[:2]
+                )  # Take only first 2 columns (ignore z if present)
+                points.append([x, y])
+            except ValueError:
+                continue  # Skip lines that can't be parsed as coordinates
+
+    if not points:
+        raise ValueError("No valid coordinate points found in the file.")
+
+    return {
+        "name": profile_name,
+        "points": points,
+    }
