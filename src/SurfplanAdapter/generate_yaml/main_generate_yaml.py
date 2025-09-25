@@ -137,7 +137,7 @@ def main(
         yaml_data[" "] = None  # Empty line before bridle_nodes
         bridle_nodes = generate_bridle_nodes_data.main(bridle_lines)
         bridle_connections = generate_bridle_connections_data.main(
-            bridle_lines, bridle_nodes
+            bridle_lines, bridle_nodes, len(wing_sections["data"])
         )
         bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
 
