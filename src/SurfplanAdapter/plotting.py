@@ -440,6 +440,37 @@ def plot_and_save_all_profiles_from_ribs_data(ribs_data, profile_base_dir):
             )
             continue
 
+        ### Add new plotting functionality
+        from SurfplanAdapter.find_airfoil_parameters import utils_lei_parametric
+        from SurfplanAdapter.find_airfoil_parameters import main_find_airfoil_parameters
+
+        # extract fitted parameters
+        optimized_parameters, raw_airfoil_points, _ = (
+            main_find_airfoil_parameters.get_fitted_airfoil_parameters(file_path)
+        )
+        # generate airfoil with optimized parameters
+        optimized_points, optimized_profile_name, optimized_seam_a = (
+            utils_lei_parametric.generate_profile(
+                **optimized_parameters,
+                TE_tension=0.2,
+                e=0.006,
+                LE_fillet=0.06,
+                LE_config=1,
+                manual_D_fillet1=0.04,
+                manual_D_fillet2=0.04,
+                manual_fillet_a=40,
+            )
+        )
+
+        # plot optimized airfoil
+        utils_lei_parametric.plot_airfoil_all_points(
+            optimized_points,
+            **optimized_parameters,
+            extra_airfoil_points=np.array(raw_airfoil_points),
+            save_path=profile_base_dir / f"{profile_name}_regression.png",
+            is_show=False,
+        )
+
         # Extract parameters from rib data
         t = float(
             rib["d_tube_from_surfplan_txt"]

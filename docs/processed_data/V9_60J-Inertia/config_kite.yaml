@@ -1,0 +1,166 @@
+wing_sections:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - airfoil_id: integer, unique identifier for the airfoil (matches wing_airfoils)':
+  #   - LE_x: x-coordinate of leading edge':
+  #   - LE_y: y-coordinate of leading edge':
+  #   - LE_z: z-coordinate of leading edge':
+  #   - TE_x: x-coordinate of trailing edge':
+  #   - TE_y: y-coordinate of trailing edge':
+  #   - TE_z: z-coordinate of trailing edge':
+  headers: [airfoil_id, LE_x, LE_y, LE_z, TE_x, TE_y, TE_z, VUP_x, VUP_y, VUP_z]
+  data:
+  - [15, 0.428759, 6.5973, 1.298734, 1.961045, 6.602404, 1.253859, 0.034231, 1.956744,
+    0.130677]
+  - [14, 0.152117, 6.608466, 1.409116, 1.968509, 6.588618, 1.349235, 0.042706, 1.99762,
+    0.170996]
+  - [13, -0.103373, 6.603201, 1.681135, 1.989147, 6.550504, 1.612923, 0.066137, 2.110631,
+    0.282464]
+  - [12, -0.307091, 6.582144, 2.083952, 2.020323, 6.492928, 2.01126, 0.101532, 2.281348,
+    0.450853]
+  - [11, -0.611118, 6.304224, 2.912187, 2.075069, 6.26499, 2.805586, 0.082032, 2.412066,
+    1.179341]
+  - [10, -0.863371, 5.848199, 3.598863, 2.113687, 5.863312, 3.478559, 0.062349, 2.341937,
+    1.837112]
+  - [9, -1.074038, 5.318458, 4.17588, 2.136492, 5.283062, 3.996548, 0.154236, 2.215899,
+    2.323888]
+  - [8, -1.25072, 4.743088, 4.655969, 2.153067, 4.77273, 4.544545, 0.072485, 2.007774,
+    2.748427]
+  - [7, -1.391241, 4.134815, 5.043379, 2.15321, 4.11987, 4.856234, 0.170328, 1.745736,
+    3.086532]
+  - [6, -1.506646, 3.510025, 5.354939, 2.156644, 3.53951, 5.255655, 0.078665, 1.492872,
+    3.345851]
+  - [5, -1.59683, 2.878335, 5.605342, 2.153223, 2.871734, 5.41719, 0.180237, 1.216635,
+    3.549611]
+  - [4, -1.666373, 2.239914, 5.791152, 2.156595, 2.260076, 5.70078, 0.082771, 0.930442,
+    3.709011]
+  - [3, -1.714512, 1.600315, 5.926761, 2.153096, 1.596112, 5.73895, 0.185905, 0.660308,
+    3.813578]
+  - [2, -1.747773, 0.959996, 6.013203, 2.156563, 0.965221, 5.927022, 0.085219, 0.399823,
+    3.885029]
+  - [1, -1.762943, 0.320065, 6.059089, 2.15305, 0.313647, 5.8711, 0.188099, 0.133632,
+    3.913712]
+  - [1, -1.762943, -0.320065, 6.059089, 2.15305, -0.313647, 5.8711, 0.188099, -0.133632,
+    3.913712]
+  - [2, -1.747773, -0.959996, 6.013203, 2.156563, -0.965221, 5.927022, 0.085219, -0.399823,
+    3.885029]
+  - [3, -1.714512, -1.600315, 5.926761, 2.153096, -1.596112, 5.73895, 0.185905, -0.660308,
+    3.813578]
+  - [4, -1.666373, -2.239914, 5.791152, 2.156595, -2.260076, 5.70078, 0.082771, -0.930442,
+    3.709011]
+  - [5, -1.59683, -2.878335, 5.605342, 2.153223, -2.871734, 5.41719, 0.180237, -1.216635,
+    3.549611]
+  - [6, -1.506646, -3.510025, 5.354939, 2.156644, -3.53951, 5.255655, 0.078665, -1.492872,
+    3.345851]
+  - [7, -1.391241, -4.134815, 5.043379, 2.15321, -4.11987, 4.856234, 0.170328, -1.745736,
+    3.086532]
+  - [8, -1.25072, -4.743088, 4.655969, 2.153067, -4.77273, 4.544545, 0.072485, -2.007774,
+    2.748427]
+  - [9, -1.074038, -5.318458, 4.17588, 2.136492, -5.283062, 3.996548, 0.154236, -2.215899,
+    2.323888]
+  - [10, -0.863371, -5.848199, 3.598863, 2.113687, -5.863312, 3.478559, 0.062349,
+    -2.341937, 1.837112]
+  - [11, -0.611118, -6.304224, 2.912187, 2.075069, -6.26499, 2.805586, 0.082032, -2.412066,
+    1.179341]
+  - [12, -0.307091, -6.582144, 2.083952, 2.020323, -6.492928, 2.01126, 0.101532, -2.281348,
+    0.450853]
+  - [13, -0.103373, -6.603201, 1.681135, 1.989147, -6.550504, 1.612923, 0.066137,
+    -2.110631, 0.282464]
+  - [14, 0.152117, -6.608466, 1.409116, 1.968509, -6.588618, 1.349235, 0.042706, -1.99762,
+    0.170996]
+  - [15, 0.428759, -6.5973, 1.298734, 1.961045, -6.602404, 1.253859, 0.034231, -1.956744,
+    0.130677]
+
+wing_airfoils:
+  # ---------------------------------------------------------------':
+  # headers:':
+  #   - airfoil_id: integer, unique identifier for the airfoil':
+  #   - type: one of [neuralfoil, breukels_regression, masure_regression, polars]':
+  #   - info_dict: dictionary with parameters depending on ''type''':
+  #':
+  # info_dict fields by type:':
+  #   - breukels_regression:':
+  #       t: Tube diameter non-dimensionalized by chord (required)':
+  #       kappa: Maximum camber height/magnitude, non-dimensionalized by chord (required)':
+  #   - neuralfoil:':
+  #       dat_file_path: Path to airfoil .dat file (x, y columns)':
+  #       model_size: NeuralFoil model size (e.g., "xxxlarge")':
+  #       xtr_lower: Lower transition location (0=forced, 1=free)':
+  #       xtr_upper: Upper transition location':
+  #       n_crit: Critical amplification factor (see guidelines below)':
+  #         n_crit guidelines:':
+  #           Sailplane:           12–14':
+  #           Motorglider:         11–13':
+  #           Clean wind tunnel:   10–12':
+  #           Average wind tunnel: 9   (standard "e^9 method")':
+  #           Dirty wind tunnel:   4–8':
+  #   - polars:':
+  #       csv_file_path: Path to polar CSV file (columns: alpha [rad], cl, cd, cm)':
+  #   - masure_regression:':
+  #       t, eta, kappa, delta, lamba, phi: Regression parameters':
+  #   - inviscid:':
+  #       no further data is required':
+  alpha_range: [-10, 31, 0.5]
+  reynolds: 1000000.0
+  headers: [airfoil_id, type, info_dict]
+  data:
+  - [1, neuralfoil, {dat_file_path: profiles/prof_1.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08000009376927805,
+        d_tube_from_dat: 0.07993937594660255, eta: 0.05101379843150485, kappa: 0.0242315542549648,
+        delta: 7.717818053288767, chord: 3.920507904710052, is_strut: true}}]
+  - [2, neuralfoil, {dat_file_path: profiles/prof_2.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08005268703749188,
+        d_tube_from_dat: 0.08005961764539248, eta: 0.04564866530829458, kappa: 0.022255501734368778,
+        delta: 6.9225481296832925, chord: 3.905290522647707, is_strut: false}}]
+  - [3, neuralfoil, {dat_file_path: profiles/prof_3.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.0802023642551245,
+        d_tube_from_dat: 0.08027682439885372, eta: 0.04604242798861599, kappa: 0.023260046628778123,
+        delta: 7.179372959540558, chord: 3.8721676459825445, is_strut: true}}]
+  - [4, neuralfoil, {dat_file_path: profiles/prof_4.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08046935801154857,
+        d_tube_from_dat: 0.08063993992235371, eta: 0.046629273627333365, kappa: 0.022203117228794665,
+        delta: 6.7841934800250385, chord: 3.8240891639254437, is_strut: false}}]
+  - [5, neuralfoil, {dat_file_path: profiles/prof_5.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08084583634781745,
+        d_tube_from_dat: 0.08124161940766857, eta: 0.04750011812588316, kappa: 0.0233812887215274,
+        delta: 7.030327226487941, chord: 3.754775925553215, is_strut: true}}]
+  - [6, neuralfoil, {dat_file_path: profiles/prof_6.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08144476206057051,
+        d_tube_from_dat: 0.08198435486088371, eta: 0.04868005068937299, kappa: 0.02261849086494736,
+        delta: 6.6640859786889735, chord: 3.6647537846328775, is_strut: false}}]
+  - [7, neuralfoil, {dat_file_path: profiles/prof_7.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08223288112128811,
+        d_tube_from_dat: 0.08299499987459846, eta: 0.05027650154690319, kappa: 0.02366499582205242,
+        delta: 6.781479843666602, chord: 3.549419599800931, is_strut: true}}]
+  - [8, neuralfoil, {dat_file_path: profiles/prof_8.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08341184642536724,
+        d_tube_from_dat: 0.08504584220883027, eta: 0.05872440161037404, kappa: 0.02316231338077017,
+        delta: 6.40670997680914, chord: 3.405739258561789, is_strut: false}}]
+  - [9, neuralfoil, {dat_file_path: profiles/prof_9.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08535046450441468,
+        d_tube_from_dat: 0.08705039008080247, eta: 0.06219428741431641, kappa: 0.02438379903222577,
+        delta: 6.410107152343443, chord: 3.2157294233097415, is_strut: true}}]
+  - [10, neuralfoil, {dat_file_path: profiles/prof_10.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.08830800302514082,
+        d_tube_from_dat: 0.09149110603045621, eta: 0.06712476856226213, kappa: 0.02425949548131859,
+        delta: 5.9619780958483375, chord: 2.9795261016727137, is_strut: false}}]
+  - [11, neuralfoil, {dat_file_path: profiles/prof_11.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.09278440217682586,
+        d_tube_from_dat: 0.09818512936475958, eta: 0.07848574255835489, kappa: 0.024170124945813797,
+        delta: 5.4265329389298245, chord: 2.6885876736543297, is_strut: true}}]
+  - [12, neuralfoil, {dat_file_path: profiles/prof_12.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.10007692713635312,
+        d_tube_from_dat: 0.10723003211984247, eta: 0.021294257023330085, kappa: 0.02147260641943166,
+        delta: 3.0189263093064653, chord: 2.3302573997127443, is_strut: false}}]
+  - [13, neuralfoil, {dat_file_path: profiles/prof_13.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.10351361348145854,
+        d_tube_from_dat: 0.10723003211984247, eta: 0.0496211, kappa: 0.0500367, delta: 3.0189263093064653,
+        chord: 2.0942945831837982, is_strut: false}}]
+  - [14, neuralfoil, {dat_file_path: profiles/prof_14.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.11899258757904949,
+        d_tube_from_dat: 0.1118044186939148, eta: 0.0523097, kappa: 0.0525175, delta: 3.1777099126414754,
+        chord: 1.817487159494944, is_strut: false}}]
+  - [15, neuralfoil, {dat_file_path: profiles/prof_15.dat, model_size: xxxlarge, xtr_lower: 0.1,
+      xtr_upper: 0.1, n_crit: 9, meta_parameters: {d_tube_from_surfplan_txt: 0.14073961540848762,
+        d_tube_from_dat: 0.11637880526798715, eta: 0.0549983, kappa: 0.0549983, delta: 3.3364935159764855,
+        chord: 1.532951467671759, is_strut: false}}]
