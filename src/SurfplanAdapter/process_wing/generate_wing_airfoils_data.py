@@ -58,7 +58,7 @@ def main(
                 "eta": round(float(rib["x_max_camber"]), 3),
                 "kappa": round(float(rib["y_max_camber"]), 3),
                 "delta": round(float(rib["TE_angle"]), 3),
-                "lamba": round(float(rib["te_tension"]), 3),
+                "lambda": round(float(rib["te_tension"]), 3),
                 "phi": round(float(rib["le_tension"]), 3),
                 "chord": round(float(rib["chord"]), 3),
                 "is_strut": rib["is_strut"],
