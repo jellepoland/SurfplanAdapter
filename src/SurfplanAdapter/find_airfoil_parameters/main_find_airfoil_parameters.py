@@ -341,26 +341,3 @@ def get_fitted_airfoil_parameters(
         print(f"Using default lambda value, λ = {base_lambda:.3f}")
 
     return base_parameters, point_list, profile_name
-
-
-if __name__ == "__main__":
-    ### Run a quick test
-    test_dat_file = Path(
-        "/home/jellepoland/ownCloud/phd/code/SurfplanAdapter/data/TUDELFT_V3_KITE/profiles/prof_1.dat"
-    )
-
-    # extract fitted parameters
-    optimized_parameters, raw_airfoil_points = get_fitted_airfoil_parameters(
-        test_dat_file
-    )
-    # generate airfoil with optimized parameters
-    optimized_points, optimized_profile_name, optimized_seam_a = (
-        utils_lei_parametric.generate_profile(**optimized_parameters)
-    )
-
-    # plot optimized airfoil
-    utils_lei_parametric.plot_airfoil_all_points(
-        optimized_points,
-        **optimized_parameters,
-        extra_airfoil_points=np.array(raw_airfoil_points),
-    )

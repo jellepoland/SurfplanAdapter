@@ -6,9 +6,6 @@ from SurfplanAdapter.utils import (
     line_parser,
     transform_coordinate_system_surfplan_to_VSM,
 )
-from SurfplanAdapter.plotting import plot_and_save_all_profiles_from_ribs_data
-
-
 from SurfplanAdapter.find_airfoil_parameters.main_find_airfoil_parameters import (
     get_fitted_airfoil_parameters,
 )
@@ -651,9 +648,5 @@ def main(
         rib["LE"] = transform_coordinate_system_surfplan_to_VSM(rib["LE"])
         rib["TE"] = transform_coordinate_system_surfplan_to_VSM(rib["TE"])
         rib["VUP"] = transform_coordinate_system_surfplan_to_VSM(rib["VUP"])
-
-    # Plot and save all profiles if requested
-    if is_make_plots:
-        plot_and_save_all_profiles_from_ribs_data(ribs_data_sorted, profile_save_dir)
 
     return ribs_data_sorted
