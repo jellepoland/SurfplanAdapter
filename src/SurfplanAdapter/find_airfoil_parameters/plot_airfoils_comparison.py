@@ -4,7 +4,7 @@ Plot all airfoils defined in a YAML configuration file.
 
 This script reads a kite configuration YAML file and plots all the airfoils
 defined in the wing_airfoils section. Each airfoil is plotted in a separate
-subplot arranged in a single column.
+subplot arranged in a single column, with optional CAD-sliced airfoil overlays.
 """
 
 import yaml
@@ -14,8 +14,6 @@ from pathlib import Path
 
 from VSM.plot_styling import set_plot_style
 from SurfplanAdapter.find_airfoil_parameters import utils_lei_parametric_copy
-
-PROJECT_DIR = Path(__file__).resolve().parents[1]
 
 
 def load_cad_airfoil(dat_file_path):
@@ -97,8 +95,11 @@ def plot_all_airfoils(yaml_path, output_path=None, surfplan_airfoils_dir=None):
     output_path : Path or str, optional
         Path to save the output figure
     surfplan_airfoils_dir : Path or str, optional
-        Directory containing CAD-sliced airfoil .dat files (named 1.dat, 2.dat, etc.)
+        Directory containing CAD-sliced airfoil .dat files (named prof_1.dat, prof_2.dat, etc.)
     """
+    # Apply plot styling
+    set_plot_style()
+
     # Extract airfoils from YAML
     airfoils = extract_airfoils_from_yaml(yaml_path)
 
@@ -127,7 +128,7 @@ def plot_all_airfoils(yaml_path, output_path=None, surfplan_airfoils_dir=None):
             )
             if n_surfplan_files < n_airfoils:
                 print(
-                    f"  → Will use prof_{last_surfplan_id}.dat for airfoils {last_surfplan_id+1} through {n_airfoils}"
+                    f"  → Will use prof_{last_surfplan_id}.dat for last airfoil comparison"
                 )
 
     # Create figure with subplots
@@ -213,9 +214,13 @@ def plot_all_airfoils(yaml_path, output_path=None, surfplan_airfoils_dir=None):
                     print(f"  ✓ Surfplan airfoil loaded from {surfplan_file.name}")
                     max_y = max(np.concatenate((points[:, 1], surfplan_points[:, 1])))
                     min_y = min(np.concatenate((points[:, 1], surfplan_points[:, 1])))
+                else:
+                    max_y = max(points[:, 1])
+                    min_y = min(points[:, 1])
             else:
                 max_y = max(points[:, 1])
                 min_y = min(points[:, 1])
+
             # Formatting
             ax.set_aspect("equal", "box")
             ax.grid(True, alpha=0.3)
@@ -223,7 +228,7 @@ def plot_all_airfoils(yaml_path, output_path=None, surfplan_airfoils_dir=None):
             ax.set_ylabel("$y/c$ (-)")
 
             # Add legend if Surfplan data was plotted
-            if surfplan_airfoils_dir is not None:
+            if surfplan_points is not None:
                 ax.legend(loc="upper right", fontsize=8)
 
             # Title with parameters
@@ -262,92 +267,7 @@ def plot_all_airfoils(yaml_path, output_path=None, surfplan_airfoils_dir=None):
     if output_path:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.tight_layout()
         plt.savefig(output_path)
         print(f"\nFigure saved to: {output_path}")
 
-
-def main():
-    """
-    Main function to plot airfoils from a YAML configuration file.
-
-    Modify the yaml_path variable below to point to your desired YAML file.
-    """
-    # Apply plot styling
-    set_plot_style()
-
-    # ===== USER CONFIGURATION =====
-    # Modify this path to your YAML file
-    yaml_path = (
-        Path(PROJECT_DIR) / "processed_data" / "TUDELFT_V3_KITE" / "aero_geometry.yaml"
-    )
-
-    # Optional: specify output path for saving the figure
-    output_path = (
-        Path(PROJECT_DIR)
-        / "results"
-        / "TUDELFT_V3_KITE"
-        / f"airfoils_in_{yaml_path.stem}.pdf"
-    )
-
-    # Optional: directory containing CAD-sliced airfoils (1.dat, 2.dat, etc.)
-    surfplan_airfoils_dir = Path(PROJECT_DIR) / "data" / "TUDELFT_V3_KITE" / "profiles"
-    # ==============================
-
-    print("=" * 60)
-    print("Plotting all airfoils from YAML configuration")
-    print("=" * 60)
-    print(f"YAML file: {yaml_path}")
-
-    if not yaml_path.exists():
-        print(f"ERROR: YAML file not found at {yaml_path}")
-        return
-
-    # First, let's print what's in the YAML to debug
-    print("\nReading YAML file...")
-    airfoils = extract_airfoils_from_yaml(yaml_path)
-
-    if airfoils:
-        print(f"\nFound {len(airfoils)} airfoil(s):")
-        for airfoil in airfoils:
-            print(f"\n  Airfoil ID {airfoil['id']}:")
-            print(f"    t (tube_size) = {airfoil['t']:.6f}")
-            print(f"    eta (c_x, camber position) = {airfoil['eta']:.6f}")
-            print(f"    kappa (c_y, camber height) = {airfoil['kappa']:.6f}")
-            print(f"    delta (TE_angle) = {airfoil['delta']:.6f}")
-            print(f"    lambda (TE_cam_tension) = {airfoil['lambda']:.6f}")
-            print(f"    phi (LE_tension) = {airfoil['phi']:.6f}")
-
-            # Check for unreasonable values
-            if airfoil["kappa"] > 0.3:
-                print(
-                    f"    WARNING: kappa={airfoil['kappa']:.6f} is very large! Should be < 0.3"
-                )
-            if airfoil["eta"] > 0.5:
-                print(
-                    f"    WARNING: eta={airfoil['eta']:.6f} is very large! Should be < 0.5"
-                )
-            if airfoil["t"] > 0.2:
-                print(
-                    f"    WARNING: t={airfoil['t']:.6f} is very large! Should be < 0.2"
-                )
-
-    # Check if Surfplan airfoils directory exists
-    if surfplan_airfoils_dir.exists():
-        print(f"\nSurfplan airfoils directory found: {surfplan_airfoils_dir}")
-    else:
-        print(
-            f"\nWarning: Surfplan airfoils directory not found: {surfplan_airfoils_dir}"
-        )
-        surfplan_airfoils_dir = None
-
-    # Generate plots
-    plot_all_airfoils(yaml_path, output_path, surfplan_airfoils_dir)
-
-    print("\n" + "=" * 60)
-    print("Done!")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    main()
+    plt.close(fig)

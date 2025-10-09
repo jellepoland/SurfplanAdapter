@@ -6,8 +6,11 @@ from SurfplanAdapter.plotting import (
 from SurfplanAdapter.generate_yaml import main_generate_yaml
 from SurfplanAdapter.process_wing import main_process_wing
 from SurfplanAdapter.process_bridle_lines import main_process_bridle_lines
+from SurfplanAdapter.find_airfoil_parameters.plot_airfoils_comparison import (
+    plot_all_airfoils,
+)
 
-PROJECT_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 
 
 def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
@@ -54,6 +57,18 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
         profile_base_dir=Path(yaml_file_path.parent / "profiles"),
         save_path=save_dir / "3d_airfoil_plot.png",  # if given it will also save
         show_plot=True,  # Set to False to avoid blocking in automated runs
+    )
+
+    # Generate comparison plot of parametric vs CAD-sliced airfoils
+    print("\n" + "=" * 60)
+    print("Generating airfoil comparison plot")
+    print("=" * 60)
+    aero_geometry_path = save_dir / "aero_geometry.yaml"
+    comparison_plot_path = save_dir / f"airfoils_in_{aero_geometry_path.stem}.pdf"
+    plot_all_airfoils(
+        yaml_path=aero_geometry_path,
+        output_path=comparison_plot_path,
+        surfplan_airfoils_dir=profile_load_dir,
     )
 
 
