@@ -72,20 +72,34 @@ def main(filepath):
                 header_skipped = True
                 continue
 
-            # If the line does not contain a semicolon, end the bridle section
-            # but continue scanning (don't break) in case there are more sections
-            if ";" not in line:
-                in_bridle_section = False
-                continue
+            # If the line is too short, we assume the section has ended.
+            if len(line) < 3:
+                break
 
-            # For bridle lines, split by semicolon and clean only numeric columns
-            raw_parts = line.split(";")
+            # For bridle lines, we need to preserve all columns including empty ones
+            # Split by semicolon or comma, then clean each part
+            if ";" in line:
+                raw_parts = line.split(";")
+            elif "," in line:
+                raw_parts = line.split(",")
+            else:
+                raise ValueError(
+                    f"Unexpected delimiter in bridle line at line {line_num + 1}: {line}"
+                )
             cleaned_parts = []
             for i, part in enumerate(raw_parts):
                 part = part.strip()
-                if i in NUMERIC_IDXS:
-                    part = _num_clean(part)
-                # else: leave text fields (Name, Material) exactly as-is
+                if part and any(char.isdigit() for char in part):
+                    # Convert comma to period for decimal numbers
+                    if "," in part:
+                        part = part.replace(",", ".")
+                    # Handle multiple periods in numbers (malformed floats)
+                    if part.count(".") > 1:
+                        first_period = part.find(".")
+                        if first_period != -1:
+                            before_period = part[: first_period + 1]
+                            after_period = part[first_period + 1 :].replace(".", "")
+                            part = before_period + after_period
                 cleaned_parts.append(part)
 
             # Expecting at least 10 columns based on the header:
