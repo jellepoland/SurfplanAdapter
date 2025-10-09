@@ -1,20 +1,7 @@
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import os
-import pandas as pd
 import numpy as np
 import yaml
 from pathlib import Path
-
-# from SurfplanAdapter.process_surfplan.read_profile_from_airfoil_dat_files import (
-#     reading_profile_from_airfoil_dat_files,
-# )
-from SurfplanAdapter.utils import (
-    transform_coordinate_system_surfplan_to_VSM,
-)
-from SurfplanAdapter.find_airfoil_parameters.main_find_airfoil_parameters import (
-    get_fitted_airfoil_parameters,
-)
 
 
 def plot_airfoils_3d_from_yaml(
