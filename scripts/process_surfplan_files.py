@@ -7,7 +7,7 @@ from SurfplanAdapter.generate_yaml import main_generate_yaml
 from SurfplanAdapter.process_wing import main_process_wing
 from SurfplanAdapter.process_bridle_lines import main_process_bridle_lines
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 
 def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):

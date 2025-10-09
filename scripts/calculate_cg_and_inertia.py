@@ -1,7 +1,8 @@
 from pathlib import Path
 from SurfplanAdapter import calculate_cg_and_inertia
 from SurfplanAdapter.generate_yaml import main_generate_yaml
-from scripts.utils import PROJECT_DIR
+
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 
 def main_generate_yaml(

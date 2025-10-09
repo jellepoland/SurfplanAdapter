@@ -7,7 +7,7 @@ from VSM.plot_geometry_matplotlib import plot_geometry
 from VSM.plot_geometry_plotly import interactive_plot
 import numpy as np
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 
 def main(kite_name="TUDELFT_V3_KITE"):
