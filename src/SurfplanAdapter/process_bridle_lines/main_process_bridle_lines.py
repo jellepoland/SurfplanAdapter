@@ -26,20 +26,6 @@ def main(filepath):
     """
     # Define which column indices contain numeric data that need cleaning
     # TopX,Y,Z (0,1,2), BottomX,Y,Z (3,4,5), Length (7), Diameter (9)
-    NUMERIC_IDXS = {0, 1, 2, 3, 4, 5, 7, 9}
-
-    def _num_clean(s: str) -> str:
-        """Clean numeric strings: convert comma to dot and handle malformed floats."""
-        s = s.strip()
-        if not s:
-            return s
-        # decimal comma → dot
-        s = s.replace(",", ".")
-        # collapse multiple dots in malformed numeric tokens (e.g., '12.3.4' → '12.34')
-        if s.count(".") > 1:
-            i = s.find(".")
-            s = s[: i + 1] + s[i + 1 :].replace(".", "")
-        return s
 
     def _to_float(s, default):
         """Convert string to float with explicit default handling."""

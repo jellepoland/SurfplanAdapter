@@ -1,8 +1,7 @@
 import yaml
-from pathlib import Path
 import numpy as np
-import pandas as pd
-from scripts.utils import PROJECT_DIR
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 
 def find_mass_distributions(
@@ -250,9 +249,6 @@ def plot_nodes(
     is_strut : array-like of bool, shape (n_ribs,), optional
         Boolean flags indicating where struts exist.
     """
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import numpy as np
 
     # Quick helper for setting 3D axes to equal scale
     def set_axes_equal_3d(ax):

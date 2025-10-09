@@ -10,11 +10,11 @@ from SurfplanAdapter.find_airfoil_parameters.plot_airfoils_comparison import (
     plot_all_airfoils,
 )
 
-PROJECT_DIR = Path(__file__).resolve().parents[1]
-
 
 def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
     """It is crucial that the kite_name matches the name of the surfplan file"""
+
+    PROJECT_DIR = Path(__file__).resolve().parents[1]
 
     data_dir = Path(PROJECT_DIR) / "data" / f"{kite_name}"
     path_surfplan_file = Path(data_dir) / f"{kite_name}.txt"
