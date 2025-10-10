@@ -1,4 +1,5 @@
 from pathlib import Path
+import numpy as np
 from SurfplanAdapter.process_bridle_lines import (
     generate_bridle_connections_data,
     generate_bridle_lines_data,
@@ -9,6 +10,7 @@ from SurfplanAdapter.process_wing import (
     generate_wing_airfoils_data,
 )
 from SurfplanAdapter.generate_yaml import utils
+from SurfplanAdapter.utils import transform_coordinate_system_surfplan_to_VSM
 
 
 def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
@@ -68,6 +70,63 @@ def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
     yaml_data["bridle_connections"] = struc_geometry_dict["bridle_connections"]
 
     # Add bridle_lines
+    yaml_data["   "] = None
+    yaml_data["bridle_lines"] = struc_geometry_dict["bridle_lines"]
+
+    return yaml_data
+
+
+def transform_struc_geometry_all_in_yaml_format(struc_geometry_dict):
+    """
+    Transform the structural geometry dict for the Surfplan all-in export format.
+    """
+    yaml_data = {}
+
+    # General section
+    yaml_data["##############################"] = None
+    yaml_data["## General ###################"] = None
+    yaml_data["##############################"] = None
+    yaml_data["   "] = None
+    yaml_data["bridle_point_node"] = [0, 0, 0]
+
+    # Mass section
+    yaml_data["   "] = None
+    yaml_data["## Mass"] = None
+    yaml_data["pulley_mass"] = float(0.1)
+    yaml_data["kcu_mass"] = float(8.4)
+
+    # Material properties section
+    yaml_data["   "] = None
+    yaml_data["## Material properties"] = None
+    yaml_data["dyneema"] = {
+        "density": 724,
+        "youngs_modulus": 550000000,
+        "damping_per_stiffness": 0.0,
+    }
+
+    # Wing section
+    yaml_data["   "] = None
+    yaml_data["###########################"] = None
+    yaml_data["## Wing ###################"] = None
+    yaml_data["###########################"] = None
+    yaml_data["   "] = None
+
+    yaml_data["wing_particles"] = struc_geometry_dict["wing_particles"]
+    yaml_data["   "] = None
+    yaml_data["strut_tubes"] = struc_geometry_dict["strut_tubes"]
+    yaml_data["   "] = None
+    yaml_data["leading_edge_tubes"] = struc_geometry_dict["leading_edge_tubes"]
+
+    # Bridle section
+    yaml_data["   "] = None
+    yaml_data["#############################"] = None
+    yaml_data["## Bridle ###################"] = None
+    yaml_data["#############################"] = None
+    yaml_data["   "] = None
+
+    yaml_data["bridle_particles"] = struc_geometry_dict["bridle_particles"]
+    yaml_data["   "] = None
+    yaml_data["bridle_connections"] = struc_geometry_dict["bridle_connections"]
     yaml_data["   "] = None
     yaml_data["bridle_lines"] = struc_geometry_dict["bridle_lines"]
 
@@ -326,4 +385,216 @@ def main(
     #     )
 
     # Save to YAML
+    utils.save_to_yaml(yaml_data, yaml_file_path)
+
+    # Create the extended Surfplan file with all sections
+    create_struc_geometry_all_in_surfplan_yaml(ribs_data, bridle_lines, yaml_file_path)
+
+
+def _calculate_le_diameter(rib):
+    diameter = rib.get("d_tube_from_surfplan_txt")
+    chord = rib.get("chord")
+    if diameter is None or chord is None:
+        return 0.0
+    return float(diameter) * float(chord)
+
+
+def _build_wing_particles_and_mapping(wing_sections):
+    wing_particles = {"headers": ["id", "x", "y", "z"], "data": []}
+    node_map = []
+    idx = 1
+    for section in wing_sections["data"]:
+        le_idx = idx
+        wing_particles["data"].append(
+            [le_idx, float(section[1]), float(section[2]), float(section[3])]
+        )
+        idx += 1
+        te_idx = idx
+        wing_particles["data"].append(
+            [te_idx, float(section[4]), float(section[5]), float(section[6])]
+        )
+        idx += 1
+        node_map.append({"LE": le_idx, "TE": te_idx})
+    return wing_particles, node_map
+
+
+def _build_strut_tubes(ribs_data, node_map):
+    strut_tubes = {
+        "headers": [
+            "name",
+            "ci",
+            "cj",
+            "strut_diam_le",
+            "strut_diam_te",
+            "le_diameter",
+        ],
+        "data": [],
+    }
+
+    strut_counter = 1
+    for idx, rib in enumerate(ribs_data):
+        if not rib.get("is_strut"):
+            continue
+        if idx >= len(node_map):
+            continue
+
+        le_node = node_map[idx]["LE"]
+        te_node = node_map[idx]["TE"]
+        le_diameter = _calculate_le_diameter(rib)
+
+        strut_samples = rib.get("strut_samples") or []
+        strut_diam_le = None
+        strut_diam_te = None
+        if strut_samples:
+            te_point = np.array(rib["TE"], dtype=float)
+            le_point = np.array(rib["LE"], dtype=float)
+            transformed_samples = []
+            for sample in strut_samples:
+                center = np.array(sample["center"], dtype=float)
+                center_vsm = transform_coordinate_system_surfplan_to_VSM(center)
+                transformed_samples.append((center_vsm, float(sample["diameter"])))
+
+            strut_diam_te = min(
+                transformed_samples,
+                key=lambda s: np.linalg.norm(s[0] - te_point),
+            )[1]
+            strut_diam_le = min(
+                transformed_samples,
+                key=lambda s: np.linalg.norm(s[0] - le_point),
+            )[1]
+
+        strut_tubes["data"].append(
+            [
+                f"strut_{strut_counter}",
+                le_node,
+                te_node,
+                None if strut_diam_le is None else round(strut_diam_le, 6),
+                None if strut_diam_te is None else round(strut_diam_te, 6),
+                round(le_diameter, 6),
+            ]
+        )
+        strut_counter += 1
+
+    return strut_tubes
+
+
+def _build_leading_edge_tubes(ribs_data, node_map):
+    leading_edge_tubes = {
+        "headers": ["name", "ci", "cj", "diameter"],
+        "data": [],
+    }
+
+    n_nodes = len(node_map)
+    if n_nodes == 0:
+        return leading_edge_tubes
+
+    def _segment_diameter(idx_a, idx_b=None):
+        diameters = []
+        for idx in [idx_a, idx_b]:
+            if idx is None:
+                continue
+            if 0 <= idx < len(ribs_data):
+                diameters.append(_calculate_le_diameter(ribs_data[idx]))
+        if not diameters:
+            return 0.0
+        return round(sum(diameters) / len(diameters), 6)
+
+    # Tip TE -> Tip LE
+    leading_edge_tubes["data"].append(
+        [
+            "le_tip_start",
+            node_map[0]["TE"],
+            node_map[0]["LE"],
+            _segment_diameter(0),
+        ]
+    )
+
+    # Along the leading edge from positive y to negative y
+    for i in range(n_nodes - 1):
+        leading_edge_tubes["data"].append(
+            [
+                f"le_run_{i+1}",
+                node_map[i]["LE"],
+                node_map[i + 1]["LE"],
+                _segment_diameter(i, i + 1),
+            ]
+        )
+
+    # Connect final LE to final TE
+    last_idx = n_nodes - 1
+    leading_edge_tubes["data"].append(
+        [
+            "le_tip_end",
+            node_map[last_idx]["LE"],
+            node_map[last_idx]["TE"],
+            _segment_diameter(last_idx),
+        ]
+    )
+
+    # Traverse the trailing edge back to the starting tip
+    segment = 1
+    for i in range(last_idx, 0, -1):
+        leading_edge_tubes["data"].append(
+            [
+                f"te_run_{segment}",
+                node_map[i]["TE"],
+                node_map[i - 1]["TE"],
+                _segment_diameter(i, i - 1),
+            ]
+        )
+        segment += 1
+
+    return leading_edge_tubes
+
+
+def create_struc_geometry_all_in_surfplan_yaml(
+    ribs_data,
+    bridle_lines,
+    yaml_file_path,
+):
+    yaml_file_path = Path(yaml_file_path.parent / "struc_geometry_all_in_surfplan.yaml")
+
+    # Build full wing particles and mapping (no filtering)
+    wing_sections_all = generate_wing_sections_data.main(ribs_data)
+    wing_particles_all, node_map = _build_wing_particles_and_mapping(
+        wing_sections_all
+    )
+
+    strut_tubes = _build_strut_tubes(ribs_data, node_map)
+    leading_edge_tubes = _build_leading_edge_tubes(ribs_data, node_map)
+
+    if len(bridle_lines) > 0:
+        bridle_nodes_raw = generate_bridle_nodes_data.main(bridle_lines)
+        last_wing_particle_id = (
+            wing_particles_all["data"][-1][0] if wing_particles_all["data"] else 0
+        )
+        offset = last_wing_particle_id
+
+        bridle_particles = {"headers": ["id", "x", "y", "z"], "data": []}
+        for node in bridle_nodes_raw["data"]:
+            new_id = node[0] + offset
+            bridle_particles["data"].append([new_id, node[1], node[2], node[3]])
+
+        bridle_connections = generate_bridle_connections_data.main(
+            bridle_lines, bridle_nodes_raw, len(wing_particles_all["data"])
+        )
+        bridle_lines_yaml = generate_bridle_lines_data.main(bridle_lines)
+    else:
+        bridle_particles = {"headers": ["id", "x", "y", "z"], "data": []}
+        bridle_connections = {"headers": ["name", "ci", "cj"], "data": []}
+        bridle_lines_yaml = {
+            "headers": ["name", "rest_length", "diameter", "material", "density"],
+            "data": [],
+        }
+
+    struc_geometry_dict = {
+        "wing_particles": wing_particles_all,
+        "strut_tubes": strut_tubes,
+        "leading_edge_tubes": leading_edge_tubes,
+        "bridle_particles": bridle_particles,
+        "bridle_connections": bridle_connections,
+        "bridle_lines": bridle_lines_yaml,
+    }
+
+    yaml_data = transform_struc_geometry_all_in_yaml_format(struc_geometry_dict)
     utils.save_to_yaml(yaml_data, yaml_file_path)
