@@ -41,20 +41,20 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
     bridle_lines = main_process_bridle_lines.main(path_surfplan_file)
 
     # generate yaml file
-    yaml_file_path = save_dir / "config_kite.yaml"
+    config_kite_yaml_path = save_dir / "config_kite.yaml"
 
     main_generate_yaml.main(
         ribs_data=ribs_data,
         bridle_lines=bridle_lines,
-        yaml_file_path=yaml_file_path,
+        yaml_file_path=config_kite_yaml_path,
         airfoil_type=airfoil_type,
     )
 
     # Generate 3D plot of airfoils from the created YAML file
     plot_struc_geometry_yaml(Path(save_dir) / "struc_geometry.yaml")
     plot_airfoils_3d_from_yaml(
-        yaml_file_path=yaml_file_path,
-        profile_base_dir=Path(yaml_file_path.parent / "profiles"),
+        yaml_file_path=config_kite_yaml_path,
+        profile_base_dir=Path(config_kite_yaml_path.parent / "profiles"),
         save_path=save_dir / "3d_airfoil_plot.png",  # if given it will also save
         show_plot=True,  # Set to False to avoid blocking in automated runs
     )

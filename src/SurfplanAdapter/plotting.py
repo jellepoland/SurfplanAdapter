@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def plot_airfoils_3d_from_yaml(
-    yaml_file_path, profile_base_dir, save_path=None, show_plot=True
+    yaml_file_path, profile_base_dir, save_path=None, show_plot=True, show_ids=False
 ):
     """
     Plot airfoils in 3D space using YAML file data, and also plot bridles.
