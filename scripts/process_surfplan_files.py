@@ -2,6 +2,7 @@ from pathlib import Path
 from SurfplanAdapter.plotting import (
     plot_airfoils_3d_from_yaml,
     plot_struc_geometry_yaml,
+    plot_struct_geometry_all_in_surfplan_yaml,
 )
 from SurfplanAdapter.generate_yaml import main_generate_yaml
 from SurfplanAdapter.process_wing import main_process_wing
@@ -52,6 +53,9 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
 
     # Generate 3D plot of airfoils from the created YAML file
     plot_struc_geometry_yaml(Path(save_dir) / "struc_geometry.yaml")
+    plot_struct_geometry_all_in_surfplan_yaml(
+        Path(save_dir) / "struc_geometry_all_in_surfplan.yaml"
+    )
     plot_airfoils_3d_from_yaml(
         yaml_file_path=config_kite_yaml_path,
         profile_base_dir=Path(config_kite_yaml_path.parent / "profiles"),

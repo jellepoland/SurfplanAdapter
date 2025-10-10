@@ -153,9 +153,10 @@ def read_lines(surfplan_txt_file_path: Path):
     n_le_sections = 0  # Number of LE sections
     txt_section = None  # Current section being read ('ribs' or 'le_tube')
 
-    strut_id = None  # Current strut id being read
+    strut_id = None  # Current strut id being read (0-based rib index)
     strut_id_list = []
-    struts = []  # List to store strut data: dict with 'center' and 'diameter'
+    current_strut_samples = []
+    struts_by_rib_idx = {}  # Map rib index -> list of samples
 
     for line in lines:
         line = line.strip()
@@ -169,11 +170,14 @@ def read_lines(surfplan_txt_file_path: Path):
             txt_section = "le_tube"
             continue
         elif line.startswith("Strut"):
+            # Store previous strut samples before starting a new one
+            if strut_id is not None and current_strut_samples:
+                struts_by_rib_idx[strut_id] = current_strut_samples
+                current_strut_samples = []
             txt_section = "strut"
-            strut_id = line.split()[
-                1
-            ]  # Extract the strut number (e.g., "2" from "Strut 2")
-            strut_id_list.append(int(strut_id) - 1)
+            strut_label = line.split()[1]  # Extract the strut number (e.g., "2")
+            strut_id = int(strut_label) - 1  # Convert to 0-based rib index
+            strut_id_list.append(strut_id)
             continue
 
         # Read kite ribs and store data in ribs
@@ -227,6 +231,10 @@ def read_lines(surfplan_txt_file_path: Path):
 
         elif txt_section == "strut":
             if not line:  # Empty line indicates the end of the section
+                if strut_id is not None and current_strut_samples:
+                    struts_by_rib_idx[strut_id] = current_strut_samples
+                    current_strut_samples = []
+                strut_id = None
                 txt_section = None
                 continue
             if not any(char.isdigit() for char in line):
@@ -243,8 +251,23 @@ def read_lines(surfplan_txt_file_path: Path):
             if len(values) == 4:
                 center = np.array(values[0:3])  # Strut center position (X, Y, Z)
                 diameter = values[3]  # Strut diameter
-                struts.append({"center": center, "diameter": diameter})
-    return ribs, wingtip, le_tube, n_ribs, n_wingtip_segments, strut_id_list
+                current_strut_samples.append(
+                    {"center": center, "diameter": diameter}
+                )
+
+    # Ensure the last strut is captured if the file ends without an empty line
+    if strut_id is not None and current_strut_samples:
+        struts_by_rib_idx[strut_id] = current_strut_samples
+
+    return (
+        ribs,
+        wingtip,
+        le_tube,
+        n_ribs,
+        n_wingtip_segments,
+        strut_id_list,
+        struts_by_rib_idx,
+    )
 
 
 def correcting_wingtip_by_adding_ribs(
@@ -502,7 +525,15 @@ def main(
     """
 
     kite_dir_path = os.path.dirname(surfplan_txt_file_path)
-    ribs, wingtip, le_tube, n_ribs, n_wingtip_segments, strut_id_list = read_lines(
+    (
+        ribs,
+        wingtip,
+        le_tube,
+        n_ribs,
+        n_wingtip_segments,
+        strut_id_list,
+        struts_by_rib_idx,
+    ) = read_lines(
         surfplan_txt_file_path
     )  # We remove wingtips sections from LE tube sections list to make LE and rib lists the same size
     le_tube_without_wingtips = np.concatenate(
@@ -557,22 +588,26 @@ def main(
         else:
             is_strut = False
 
-        ribs_data.append(
-            {
-                "LE": rib_le,
-                "TE": rib_te,
-                "VUP": ribs[i][2],  # Add VUP information
-                "d_tube_from_surfplan_txt": tube_diameter_i,
-                "d_tube_from_dat": airfoil["t_val"],
-                "x_max_camber": airfoil["eta_val"],
-                "y_max_camber": airfoil["kappa_val"],
-                "is_strut": is_strut,
-                "TE_angle": airfoil["delta_val"],
-                "chord": chord_i,
-                "te_tension": airfoil["lambda_val"],
-                "le_tension": airfoil["phi_val"],
-            }
-        )
+        rib_entry = {
+            "LE": rib_le,
+            "TE": rib_te,
+            "VUP": ribs[i][2],  # Add VUP information
+            "d_tube_from_surfplan_txt": tube_diameter_i,
+            "d_tube_from_dat": airfoil["t_val"],
+            "x_max_camber": airfoil["eta_val"],
+            "y_max_camber": airfoil["kappa_val"],
+            "is_strut": is_strut,
+            "TE_angle": airfoil["delta_val"],
+            "chord": chord_i,
+            "te_tension": airfoil["lambda_val"],
+            "le_tension": airfoil["phi_val"],
+            "rib_index": i,
+        }
+
+        if is_strut:
+            rib_entry["strut_samples"] = struts_by_rib_idx.get(i, [])
+
+        ribs_data.append(rib_entry)
 
     n_profiles = int(n_ribs // 2)
     ## ADDING WINGTIPS, if described in surfplan txt export file
