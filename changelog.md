@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Script `merge_bridle_nodes_to_wing_nodes.py` to merge nearby bridle nodes into wing strut/tip nodes, regenerate the Surfplan structural YAML, and plot the result.
+
+### Changed
+- `struc_geometry_all_in_surfplan.yaml` generation now retains raw strut samples and populates the `strut_tubes` section with detailed node chains ordered from LE to TE.
+- `plot_struct_geometry_all_in_surfplan_yaml` moved to the plotting module for reuse across scripts.
+- `scripts/process_surfplan_files.py` now calls the shared plotting helper instead of an inline implementation.
+
 ## [0.1.0] - 2025-10-09
 
 ### Added
