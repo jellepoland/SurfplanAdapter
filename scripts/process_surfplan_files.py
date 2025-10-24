@@ -1,4 +1,5 @@
 from pathlib import Path
+import matplotlib.pyplot as plt
 from SurfplanAdapter.plotting import (
     plot_airfoils_3d_from_yaml,
     plot_struc_geometry_yaml,
@@ -74,6 +75,56 @@ def main(kite_name="TUDELFT_V3_KITE", airfoil_type="masure_regression"):
         output_path=comparison_plot_path,
         surfplan_airfoils_dir=profile_load_dir,
     )
+
+    # plot the distribution of chambers along the span
+    print("\n" + "=" * 60)
+    print("Processing completed successfully.")
+    print("=" * 60)
+
+    # try:
+    #     # Extract spanwise positions and chamber (max camber) values
+    #     # ribs_data is expected to be a sequence of dicts containing 'LE' and 'y_max_camber' keys
+    #     spans = [rib["LE"][1] for rib in ribs_data]
+    #     chambers = [
+    #         rib.get("y_max_camber", rib.get("kappa_val", None)) for rib in ribs_data
+    #     ]
+
+    #     # Filter out ribs with missing chamber data
+    #     span_filtered = []
+    #     chamber_filtered = []
+    #     for s, c in zip(spans, chambers):
+    #         if c is None:
+    #             continue
+    #         span_filtered.append(s)
+    #         chamber_filtered.append(c)
+
+    #     # Sort by span coordinate so the plot is along the span
+    #     paired = sorted(zip(span_filtered, chamber_filtered), key=lambda x: x[0])
+    #     if paired:
+    #         span_sorted, chamber_sorted = map(list, zip(*paired))
+    #     else:
+    #         span_sorted, chamber_sorted = [], []
+
+    #     plt.figure(figsize=(8, 4))
+    #     plt.plot(span_sorted, chamber_sorted, "-o")
+    #     plt.grid(True, linestyle="--", alpha=0.5)
+    #     plt.xlabel("Span coordinate (m)")
+    #     plt.ylabel("Max camber (m)")
+    #     plt.title("Distribution of Chambers Along the Span")
+
+    #     # Ensure save directory exists and save plot
+    #     save_dir.mkdir(parents=True, exist_ok=True)
+    #     outpath = save_dir / "chamber_distribution.png"
+    #     plt.tight_layout()
+    #     plt.savefig(outpath)
+    #     try:
+    #         plt.show()
+    #     except Exception:
+    #         # In non-interactive environments show() may fail or block — ignore
+    #         pass
+    #     print(f"Saved chamber distribution plot to: {outpath}")
+    # except Exception as exc:
+    #     print(f"Could not create chamber distribution plot: {exc}")
 
 
 if __name__ == "__main__":

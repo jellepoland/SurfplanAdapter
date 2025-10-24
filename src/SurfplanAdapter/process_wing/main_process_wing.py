@@ -251,9 +251,7 @@ def read_lines(surfplan_txt_file_path: Path):
             if len(values) == 4:
                 center = np.array(values[0:3])  # Strut center position (X, Y, Z)
                 diameter = values[3]  # Strut diameter
-                current_strut_samples.append(
-                    {"center": center, "diameter": diameter}
-                )
+                current_strut_samples.append({"center": center, "diameter": diameter})
 
     # Ensure the last strut is captured if the file ends without an empty line
     if strut_id is not None and current_strut_samples:
@@ -375,11 +373,15 @@ def correcting_wingtip_by_adding_ribs(
             for point in wingtip_point_list:
                 file.write(f"{point[0]} {point[1]}\n")
 
+    existing_outer_left_rib = ribs_data[0]
+    existing_outer_right_rib = ribs_data[-1]
+
     ## Assuming things decrease linearly
     def linear_decrease(parameter):
-        return np.linspace(
-            profile_outer_rib[parameter], profile_tip[parameter], n_wingtip_segments
+        values = np.linspace(
+            profile_outer_rib[parameter], profile_tip[parameter], n_wingtip_segments + 1
         )
+        return values[1:]
 
     x_max_camber_list = linear_decrease("x_max_camber")
     y_max_camber_list = linear_decrease("y_max_camber")
@@ -390,17 +392,34 @@ def correcting_wingtip_by_adding_ribs(
     tube_diam_outer_rib = le_tube[-2]
     tube_diam_tip = le_tube[-1]
     tube_diam_list = np.linspace(
-        tube_diam_outer_rib, tube_diam_tip, n_wingtip_segments
-    ) / np.array(chord_len_list)
+        tube_diam_outer_rib, tube_diam_tip, n_wingtip_segments + 1
+    )[1:] / np.array(chord_len_list)
     chord_list = chord_len_list
 
     # Create linear interpolation for d_tube_from_dat as well
     d_tube_from_dat_outer_rib = profile_outer_rib.get("d_tube_from_dat", 0.0)
     d_tube_from_dat_tip = profile_tip.get("d_tube_from_dat", 0.0)
     d_tube_from_dat_list = np.linspace(
-        d_tube_from_dat_outer_rib, d_tube_from_dat_tip, n_wingtip_segments
-    )
+        d_tube_from_dat_outer_rib, d_tube_from_dat_tip, n_wingtip_segments + 1
+    )[1:]
 
+    # The Surfplan export provides wingtip entries for a single side (tip → inboard).
+    # Use them verbatim for the left wing and mirror them for the right wing.
+    wingtip_segments = list(
+        zip(
+            le_list,
+            te_list,
+            vup_list,
+            tube_diam_list,
+            d_tube_from_dat_list,
+            x_max_camber_list,
+            y_max_camber_list,
+            TE_angle_list,
+            chord_list,
+            te_tension_list,
+            le_tension_list,
+        )
+    )
     ## Make lists for all ribs from left wing tip to right wing tip
     left_wing_tip_additions = []
     for i, (
@@ -416,26 +435,13 @@ def correcting_wingtip_by_adding_ribs(
         te_tension_i,
         le_tension_i,
     ) in enumerate(
-        zip(
-            le_list[::-1],
-            te_list[::-1],
-            vup_list[::-1],
-            tube_diam_list[::-1],
-            d_tube_from_dat_list[::-1],
-            x_max_camber_list[::-1],
-            y_max_camber_list[::-1],
-            TE_angle_list[::-1],
-            chord_list[::-1],
-            te_tension_list[::-1],
-            le_tension_list[::-1],
-        )
+        wingtip_segments
     ):
-
         left_wing_tip_additions.append(
             {
-                "LE": le_i,
-                "TE": te_i,
-                "VUP": vup_i,
+                "LE": le_i.copy(),
+                "TE": te_i.copy(),
+                "VUP": vup_i.copy(),
                 "d_tube_from_surfplan_txt": d_tube_from_surfplan_txt_i,
                 "d_tube_from_dat": d_tube_from_dat_i,
                 "x_max_camber": x_max_camber_i,
@@ -463,28 +469,14 @@ def correcting_wingtip_by_adding_ribs(
         te_tension_i,
         le_tension_i,
     ) in enumerate(
-        zip(
-            le_list,
-            te_list,
-            vup_list,
-            tube_diam_list,
-            d_tube_from_dat_list,
-            x_max_camber_list,
-            y_max_camber_list,
-            TE_angle_list,
-            chord_list,
-            te_tension_list,
-            le_tension_list,
-        )
+        reversed(wingtip_segments)
     ):
 
         right_wing_tip_additions.append(
             {
                 "LE": np.array([-le_i[0], le_i[1], le_i[2]]),
                 "TE": np.array([-te_i[0], te_i[1], te_i[2]]),
-                "VUP": np.array(
-                    [-vup_i[0], vup_i[1], vup_i[2]]
-                ),  # Mirror VUP for symmetry
+                "VUP": np.array([-vup_i[0], vup_i[1], vup_i[2]]),  # Mirror VUP
                 "d_tube_from_surfplan_txt": d_tube_from_surfplan_txt_i,
                 "d_tube_from_dat": d_tube_from_dat_i,
                 "x_max_camber": x_max_camber_i,
@@ -496,6 +488,8 @@ def correcting_wingtip_by_adding_ribs(
                 "le_tension": le_tension_i,
             }
         )
+    right_wing_tip_additions.insert(0, existing_outer_right_rib)
+    left_wing_tip_additions.append(existing_outer_left_rib)
     ## concetanating the ribs data
     ribs_data = np.concatenate(
         [
@@ -662,6 +656,12 @@ def main(
 
     # Sort ribs data by proximity
     ribs_data_sorted = _sort_ribs_by_proximity(ribs_data)
+
+    # Add an airfoil_id to each rib.
+    # Goal: produce a symmetric sequence around the center like
+    # N, N-1, ..., 1, 0, 1, ..., N (for odd total ribs)
+    # For even total ribs this will produce a double-centre 0, e.g. N..1,0,0,1..N
+    # Robust approach: compute distance to the center index and clamp to valid range.
 
     # Add an airfoil_id to each rib, we should start from the number_of_profiles and then count down
     # So it should be 18,17,16, ..., 1, 0, 1, 2, ..., 17, 18

@@ -82,6 +82,10 @@ wing_sections:
     0.312615]
   - [18, 0.52218, -4.100957, 0.921215, 0.86682, -4.152601, 0.932607, 0.000239, -1.357902,
     0.301698]
+  - [19, -0.520832, -4.156287, 0.916618, 0.864107, -4.156287, 0.916618, 0.0, -1.352509,
+    0.297952]
+  - [20, -0.520832, 4.156287, 0.916618, 0.864107, 4.156287, 0.916618, 0.0, 1.352509,
+    0.297952]
 
 wing_airfoils:
   # ---------------------------------------------------------------':
@@ -138,20 +142,24 @@ wing_airfoils:
       kappa: 0.066, delta: 4.998, lambda: 0.1, phi: 0.65, chord: 1.98, is_strut: false}]
   - [11, masure_regression, {dat_file_path: profiles/prof_11.dat, t: 0.088, eta: 0.175,
       kappa: 0.058, delta: 4.413, lambda: 0.1, phi: 0.65, chord: 1.721, is_strut: true}]
-  - [12, masure_regression, {dat_file_path: profiles/prof_12.dat, t: 0.088, eta: 0.175,
-      kappa: 0.058, delta: 4.413, lambda: 0.1, phi: 0.65, chord: 1.62, is_strut: false}]
-  - [13, masure_regression, {dat_file_path: profiles/prof_13.dat, t: 0.087, eta: 0.152,
-      kappa: 0.055, delta: 4.081, lambda: 0.1, phi: 0.65, chord: 1.474, is_strut: false}]
-  - [14, masure_regression, {dat_file_path: profiles/prof_14.dat, t: 0.086, eta: 0.13,
-      kappa: 0.052, delta: 3.749, lambda: 0.1, phi: 0.65, chord: 1.295, is_strut: false}]
-  - [15, masure_regression, {dat_file_path: profiles/prof_15.dat, t: 0.085, eta: 0.107,
-      kappa: 0.049, delta: 3.416, lambda: 0.1, phi: 0.65, chord: 1.088, is_strut: false}]
-  - [16, masure_regression, {dat_file_path: profiles/prof_16.dat, t: 0.083, eta: 0.085,
-      kappa: 0.046, delta: 3.084, lambda: 0.1, phi: 0.65, chord: 0.86, is_strut: false}]
-  - [17, masure_regression, {dat_file_path: profiles/prof_17.dat, t: 0.082, eta: 0.062,
-      kappa: 0.043, delta: 2.752, lambda: 0.1, phi: 0.65, chord: 0.613, is_strut: false}]
+  - [12, masure_regression, {dat_file_path: profiles/prof_12.dat, t: 0.087, eta: 0.156,
+      kappa: 0.056, delta: 4.129, lambda: 0.1, phi: 0.65, chord: 1.62, is_strut: false}]
+  - [13, masure_regression, {dat_file_path: profiles/prof_13.dat, t: 0.086, eta: 0.136,
+      kappa: 0.053, delta: 3.844, lambda: 0.1, phi: 0.65, chord: 1.474, is_strut: false}]
+  - [14, masure_regression, {dat_file_path: profiles/prof_14.dat, t: 0.085, eta: 0.117,
+      kappa: 0.051, delta: 3.559, lambda: 0.1, phi: 0.65, chord: 1.295, is_strut: false}]
+  - [15, masure_regression, {dat_file_path: profiles/prof_15.dat, t: 0.084, eta: 0.098,
+      kappa: 0.048, delta: 3.274, lambda: 0.1, phi: 0.65, chord: 1.088, is_strut: false}]
+  - [16, masure_regression, {dat_file_path: profiles/prof_16.dat, t: 0.083, eta: 0.078,
+      kappa: 0.046, delta: 2.989, lambda: 0.1, phi: 0.65, chord: 0.86, is_strut: false}]
+  - [17, masure_regression, {dat_file_path: profiles/prof_17.dat, t: 0.082, eta: 0.059,
+      kappa: 0.043, delta: 2.704, lambda: 0.1, phi: 0.65, chord: 0.613, is_strut: false}]
   - [18, masure_regression, {dat_file_path: profiles/prof_18.dat, t: 0.081, eta: 0.04,
       kappa: 0.041, delta: 2.419, lambda: 0.1, phi: 0.65, chord: 0.349, is_strut: false}]
+  - [19, masure_regression, {dat_file_path: profiles/prof_19.dat, t: 0.081, eta: 0.04,
+      kappa: 0.041, delta: 2.419, lambda: 0.1, phi: 0.65, chord: 1.385, is_strut: false}]
+  - [20, masure_regression, {dat_file_path: profiles/prof_20.dat, t: 0.081, eta: 0.04,
+      kappa: 0.041, delta: 2.419, lambda: 0.1, phi: 0.65, chord: 1.385, is_strut: false}]
 
 bridle_nodes:
   # ---------------------------------------------------------------':
