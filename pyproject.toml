@@ -83,6 +83,9 @@ classifiers = [
 dependencies = [
   "numpy", 
   "matplotlib>=3.7.1",
+  "pyyaml",
+  "scipy",
+  "VSM @ git+https://github.com/awegroup/Vortex-Step-Method.git@v2.0.2",
 ]
 
 # You can define additional groups of dependencies here (e.g., development dependencies).
