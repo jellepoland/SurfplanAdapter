@@ -136,9 +136,9 @@ def main(filepath):
             [
                 transform_coordinate_system_surfplan_to_VSM(bridle_line[0]),  # point1
                 transform_coordinate_system_surfplan_to_VSM(bridle_line[1]),  # point2
+                bridle_line[5],  # diameter [m] (float)
                 bridle_line[2],  # name
                 bridle_line[3],  # length (float)
-                bridle_line[5],  # diameter [m] (float)
                 bridle_line[4],  # material
             ]
             for bridle_line in bridle_lines
