@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import Counter
 import numpy as np
 from SurfplanAdapter.process_bridle_lines import (
     generate_bridle_connections_data,
@@ -14,6 +15,7 @@ from SurfplanAdapter.utils import (
     rotate_coordinate_around_y_vsm,
     transform_coordinate_system_surfplan_to_VSM,
 )
+from SurfplanAdapter.calculate_cg_and_inertia import compute_structural_node_masses
 
 
 def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
@@ -136,11 +138,48 @@ def transform_struc_geometry_all_in_yaml_format(struc_geometry_dict):
     return yaml_data
 
 
+def _build_tube_config_from_ribs(ribs_data):
+    """Build tube data config dict from ribs_data for mass computation."""
+    wing_sections_all = generate_wing_sections_data.main(ribs_data)
+    sections_all = wing_sections_all["data"]
+    if sections_all:
+        spans = [section[2] for section in sections_all]
+        min_span = min(spans)
+        max_span = max(spans)
+        tol = 1e-6
+        sections_deduped = [
+            section
+            for section in sections_all
+            if not (
+                abs(section[2] - min_span) < tol or abs(section[2] - max_span) < tol
+            )
+        ]
+        if 0 < len(sections_deduped) < len(sections_all):
+            wing_sections_all["data"] = sections_deduped
+
+    wp_all, node_map = _build_wing_particles_and_mapping(wing_sections_all)
+    strut_tubes = _build_strut_tubes(ribs_data, node_map)
+    leading_edge_tubes = _build_leading_edge_tubes(ribs_data, node_map)
+
+    return {
+        "wing_particles": wp_all,
+        "strut_tubes": strut_tubes,
+        "leading_edge_tubes": leading_edge_tubes,
+    }
+
+
 def main(
     ribs_data,
     bridle_lines,
     yaml_file_path,
     airfoil_type: str = "masure_regression",
+    total_wing_mass=10.0,
+    canopy_kg_p_sqm=0.05,
+    le_to_strut_mass_ratio=None,
+    tube_kg_p_sqm=None,
+    sensor_mass=0.0,
+    mid_span_valve_weight=0.0,
+    strut_tube_weight=0.0,
 ):
     yaml_file_path = Path(yaml_file_path.parent / "struc_geometry.yaml")
 
@@ -166,8 +205,13 @@ def main(
             rib_indices_with_LAPS.append(i + 1)
 
     # Keep only ribs with line-attachment points (LAPs) for struc_geometry.yaml.
-    # Do not auto-add tip ribs here, because duplicated tip airfoil_ids can pull in
-    # many non-attached wing nodes.
+    # Also include the outermost tip section on each side for structural
+    # completeness (bridle nodes attach there).  Only ONE section per side is
+    # added to avoid bloat from the multiple wingtip sub-sections.
+    tip_airfoil_id = n_airfoils  # last airfoil is the tip
+    if tip_airfoil_id not in rib_indices_with_LAPS:
+        tip_entry = wing_airfoils["data"][tip_airfoil_id - 1]
+        wing_airfoils_data_struts_only.append(tip_entry)
 
     # Sort the filtered airfoil entries by their spanwise position (use the minimum span if duplicated)
     wing_airfoils_data_struts_only.sort(
@@ -186,6 +230,15 @@ def main(
         airfoil_id = section[0]
         if airfoil_id in rib_indices_with_LAPS:
             wing_sections_data_filtered.append(section)
+
+    # Add the single outermost tip section on each side (min & max LE_y)
+    if tip_airfoil_id not in rib_indices_with_LAPS:
+        tip_sections = [s for s in wing_sections["data"] if s[0] == tip_airfoil_id]
+        if tip_sections:
+            left_tip = min(tip_sections, key=lambda s: s[2])
+            right_tip = max(tip_sections, key=lambda s: s[2])
+            wing_sections_data_filtered.append(left_tip)
+            wing_sections_data_filtered.append(right_tip)
 
     # Sort the filtered sections by their spanwise coordinate (LE_y)
     wing_sections_data_filtered.sort(key=lambda section: section[2])
@@ -267,12 +320,6 @@ def main(
             ]
         )
 
-    # Optionally, connect last strut at tip (for symmetry)
-    if len(wing_particles_data) >= 2:
-        last_le = len(wing_particles_data) - 1
-        last_te = len(wing_particles_data)
-        wing_connections["data"].append([f"strut_1", last_le, last_te])
-
     # Then we need to create wing_elements
 
     # Default parameters for elements
@@ -287,6 +334,60 @@ def main(
     m_te = 0.2
     m_dia = 0.1
     linktype_default = "default"
+
+    # Compute physics-based element masses if mass budget is provided
+    element_mass_lookup = {}
+    if total_wing_mass is not None:
+        tube_config = None
+        try:
+            tube_config = _build_tube_config_from_ribs(ribs_data)
+        except Exception:
+            pass  # Will use uniform distribution without tube data
+
+        try:
+            node_masses, used_ratio = compute_structural_node_masses(
+                wing_sections_data_filtered,
+                wing_airfoils_data=wing_airfoils["data"],
+                total_wing_mass=total_wing_mass,
+                canopy_kg_p_sqm=canopy_kg_p_sqm,
+                le_to_strut_mass_ratio=le_to_strut_mass_ratio,
+                tube_kg_p_sqm=tube_kg_p_sqm,
+                sensor_mass=sensor_mass,
+                mid_span_valve_weight=mid_span_valve_weight,
+                strut_tube_weight=strut_tube_weight,
+                struc_config=tube_config,
+            )
+
+            # Compute node degrees from wing_connections
+            degree = Counter()
+            for conn in wing_connections["data"]:
+                degree[conn[1]] += 1
+                degree[conn[2]] += 1
+
+            # Degree-based splitting: m_elem = m[ci]/deg(ci) + m[cj]/deg(cj)
+            for conn in wing_connections["data"]:
+                ci, cj = conn[1], conn[2]
+                m = (
+                    node_masses.get(ci, 0.0) / degree[ci]
+                    + node_masses.get(cj, 0.0) / degree[cj]
+                )
+                element_mass_lookup[(ci, cj)] = float(round(m, 6))
+
+            total_elem_mass = sum(element_mass_lookup.values())
+            print(
+                f"[struc_geometry] Physics-based element masses: "
+                f"sum={total_elem_mass:.4f} kg "
+                f"(target={total_wing_mass} kg, "
+                f"le_to_strut_ratio={used_ratio:.4f})"
+            )
+        except Exception as exc:
+            import warnings
+
+            warnings.warn(
+                f"Could not compute physics-based element masses: {exc}. "
+                "Falling back to default masses."
+            )
+            element_mass_lookup = {}
 
     wing_elements = {
         "headers": ["name", "l0", "k", "c", "m", "linktype"],
@@ -310,8 +411,9 @@ def main(
             l0 = (
                 (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2
             ) ** 0.5
+            m = element_mass_lookup.get((ci, cj), m_le)
             wing_elements["data"].append(
-                [name, l0, k_le, c_default, m_le, linktype_default]
+                [name, l0, k_le, c_default, m, linktype_default]
             )
 
     # Add struts (strut_X)
@@ -323,8 +425,9 @@ def main(
             l0 = (
                 (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2
             ) ** 0.5
+            m = element_mass_lookup.get((ci, cj), m_strut)
             wing_elements["data"].append(
-                [name, l0, k_strut, c_default, m_strut, linktype_default]
+                [name, l0, k_strut, c_default, m, linktype_default]
             )
 
     # Add trailing-edge wires (te_X)
@@ -336,8 +439,9 @@ def main(
             l0 = (
                 (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2
             ) ** 0.5
+            m = element_mass_lookup.get((ci, cj), m_te)
             wing_elements["data"].append(
-                [name, l0, k_te, c_default, m_te, linktype_default]
+                [name, l0, k_te, c_default, m, linktype_default]
             )
 
     # Add diagonal springs (dia_Xa and dia_Xb)
@@ -349,8 +453,9 @@ def main(
             l0 = (
                 (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2
             ) ** 0.5
+            m = element_mass_lookup.get((ci, cj), m_dia)
             wing_elements["data"].append(
-                [name, l0, k_dia, c_default, m_dia, linktype_default]
+                [name, l0, k_dia, c_default, m, linktype_default]
             )
 
     # now deal with the bridle lines
@@ -597,9 +702,7 @@ def create_struc_geometry_all_in_surfplan_yaml(
         if 0 < len(sections_filtered) < len(sections_all):
             wing_sections_all["data"] = sections_filtered
 
-    wing_particles_all, node_map = _build_wing_particles_and_mapping(
-        wing_sections_all
-    )
+    wing_particles_all, node_map = _build_wing_particles_and_mapping(wing_sections_all)
 
     strut_tubes = _build_strut_tubes(ribs_data, node_map)
     leading_edge_tubes = _build_leading_edge_tubes(ribs_data, node_map)

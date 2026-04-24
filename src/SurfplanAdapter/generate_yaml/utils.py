@@ -1,5 +1,6 @@
 import yaml
 import re
+from pathlib import Path
 
 
 def represent_list(self, data):
@@ -60,3 +61,37 @@ def save_to_yaml(yaml_data, yaml_file_path):
         f.write(content)
 
     print(f'Generated YAML file and saved at "{yaml_file_path}"')
+
+
+def yaml_reader(yaml_file_path, required=True):
+    """
+    Read a YAML file into a dictionary.
+
+    Parameters
+    ----------
+    yaml_file_path : str or Path
+        Path to a YAML file.
+    required : bool
+        If True, raise FileNotFoundError when the file does not exist.
+        If False, return {} when missing.
+
+    Returns
+    -------
+    dict
+        Parsed YAML mapping (or {} when empty and optional).
+    """
+    yaml_path = Path(yaml_file_path)
+    if not yaml_path.exists():
+        if required:
+            raise FileNotFoundError(f"YAML config not found: {yaml_path}")
+        return {}
+
+    with open(yaml_path, "r") as f:
+        data = yaml.safe_load(f) or {}
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"YAML config must be a mapping/dict at top level: {yaml_path}"
+        )
+
+    return data

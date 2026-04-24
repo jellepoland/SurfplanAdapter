@@ -1,0 +1,77 @@
+# ===================================================================
+# SurfplanAdapter pipeline configuration
+# -------------------------------------------------------------------
+# This file holds defaults used by scripts/process_surfplan_files.py.
+# The script loads this file first, then overlays data/<kite_name>/config.yaml.
+# You can still override kite_name from CLI:
+#   python scripts/process_surfplan_files.py TUDELFT_V3_KITE
+# ===================================================================
+
+# ---------------------------------------------------------------
+# Kite selection
+# ---------------------------------------------------------------
+# Name of the folder in data/ and name of the .txt file inside it:
+# data/<kite_name>/<kite_name>.txt
+kite_name: default_kite
+
+# ---------------------------------------------------------------
+# Plot switches
+# ---------------------------------------------------------------
+# Plot structural geometry from processed_data/<kite_name>/struc_geometry.yaml
+is_with_struc_geometry_plot: false
+
+# Plot all-in-surfplan structural geometry YAML visualization
+is_with_struc_geometry_all_in_surfplan_yaml: false
+
+# Plot 3D wing/airfoil geometry visualization
+is_with_airfoil_3d_plot: false
+
+# Show CG/inertia plot window (mass-colored nodes + CG marker)
+is_with_cg_and_inertia_plot: false
+
+# Plot spanwise chamber distribution
+is_with_spanwise_chamber_plot: false
+
+# ---------------------------------------------------------------
+# Aerodynamic model input
+# ---------------------------------------------------------------
+# Airfoil parameterization model:
+# valid examples in this repo: "masure_regression"
+airfoil_type: masure_regression
+
+# ---------------------------------------------------------------
+# CG / inertia mass model input
+# ---------------------------------------------------------------
+# Target wing mass [kg], excluding optional bridle mass.
+total_wing_mass: 10.0
+
+# Canopy areal density [kg/m^2].
+# 0.1 kg/m^2 = 100 g/m^2.
+canopy_kg_p_sqm: 0.1
+
+# Tube areal density [kg/m^2] for LE + strut cylindrical surfaces.
+# - null  -> old behavior: tube mass is budget-based (forced to match target)
+# - value -> area-based tube mass, so total may differ from target (delta shown)
+tube_kg_p_sqm: 0.4
+
+# LE-vs-strut split ratio for budget-based mode.
+# - null  -> auto from LE/strut surface-area ratio
+# - value -> user-forced ratio in [0..1]
+# Ignored when tube_kg_p_sqm is not null.
+le_to_strut_mass_ratio: null
+
+# Lumped sensor mass [kg], split over two center LE nodes.
+sensor_mass: 0.0
+
+# Lumped valve mass [kg], applied at LE mid-span.
+mid_span_valve_weight: 0.1
+
+# Extra lumped mass [kg] per non-tip LE strut-attachment node.
+# Tip ribs are explicitly excluded.
+strut_tube_weight: 0.1
+
+# Include bridle line + pulley mass in final node list for CG/inertia.
+include_bridle_mass: false
+
+# Point [x, y, z] [m] around which inertia tensor is computed.
+desired_point: [0, 0, 0]

@@ -11,6 +11,10 @@ authors:
   - 
     family-names: "Tan"
     given-names: "Corentin"
+  - 
+    family-names: "Romain"
+    given-names: "Lambert"
+
 title: "SurfplanAdapter"
 keywords:
   - Kites
