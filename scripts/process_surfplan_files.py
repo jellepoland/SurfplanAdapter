@@ -146,6 +146,18 @@ def main(
         strut_tube_weight=strut_tube_weight,
     )
 
+    calculate_cg_and_inertia.save_wing_mass_distribution_yaml(
+        Path(save_dir) / "aero_geometry.yaml",
+        Path(save_dir) / "wing_mass_distribution.yaml",
+        total_wing_mass=total_wing_mass,
+        canopy_kg_p_sqm=canopy_kg_p_sqm,
+        le_to_strut_mass_ratio=le_to_strut_mass_ratio,
+        tube_kg_p_sqm=tube_kg_p_sqm,
+        sensor_mass=sensor_mass,
+        mid_span_valve_weight=mid_span_valve_weight,
+        strut_tube_weight=strut_tube_weight,
+    )
+
     # Generate 3D plot of airfoils from the created YAML file
     if is_with_struc_geometry_plot:
         plot_struc_geometry_yaml(Path(save_dir) / "struc_geometry.yaml")
@@ -241,7 +253,8 @@ def main(
 
 if __name__ == "__main__":
     PROJECT_DIR = Path(__file__).resolve().parents[1]
-    default_config_path = PROJECT_DIR / "data" / "default_kite" / "config.yaml"
+    KITE_NAME = "TUDELFT_V3_KITE"
+    default_config_path = PROJECT_DIR / "data" / KITE_NAME / "config.yaml"
 
     # 1) Start from shared defaults.
     runtime_config = yaml_reader(default_config_path, required=True)
@@ -261,7 +274,7 @@ if __name__ == "__main__":
         )
 
     # 3) Merge per-kite overrides if that config exists.
-    kite_name = str(runtime_config.get("kite_name", "default_kite"))
+    kite_name = str(runtime_config.get("kite_name", KITE_NAME))
     kite_config_path = PROJECT_DIR / "data" / kite_name / "config.yaml"
     kite_config = yaml_reader(kite_config_path, required=False)
     runtime_config = {**runtime_config, **kite_config}

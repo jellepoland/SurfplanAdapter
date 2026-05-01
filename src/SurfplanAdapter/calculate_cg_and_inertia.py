@@ -324,6 +324,63 @@ def _get_non_tip_strut_attachment_indices(is_strut, n_le, strut_rib_indices=None
     return sorted(idx for idx in candidates if 0 < idx < (n_le - 1))
 
 
+def _get_tube_strut_rib_indices(tube_data, LE_points):
+    if tube_data is None or not tube_data.get("struts"):
+        return None
+
+    strut_rib_indices = []
+    for strut in tube_data["struts"]:
+        dists = np.linalg.norm(LE_points - strut["pos_le"], axis=1)
+        strut_rib_indices.append(int(np.argmin(dists)))
+    return strut_rib_indices
+
+
+def _frustum_volume(diameter_a, diameter_b, length):
+    return (
+        np.pi
+        * float(length)
+        * (
+            float(diameter_a) ** 2
+            + float(diameter_a) * float(diameter_b)
+            + float(diameter_b) ** 2
+        )
+        / 12.0
+    )
+
+
+def _calculate_tube_volumes(tube_data, LE_points, TE_points):
+    if tube_data is None:
+        return None, None
+
+    le_diameters = _get_le_diameters_at_ribs(tube_data, LE_points)
+    le_volume = _frustum_volume(
+        le_diameters[0],
+        le_diameters[0],
+        np.linalg.norm(LE_points[0] - TE_points[0]),
+    )
+    for i in range(len(LE_points) - 1):
+        le_volume += _frustum_volume(
+            le_diameters[i],
+            le_diameters[i + 1],
+            np.linalg.norm(LE_points[i + 1] - LE_points[i]),
+        )
+    le_volume += _frustum_volume(
+        le_diameters[-1],
+        le_diameters[-1],
+        np.linalg.norm(TE_points[-1] - LE_points[-1]),
+    )
+
+    strut_volume = 0.0
+    for strut in tube_data.get("struts", []):
+        strut_volume += _frustum_volume(
+            strut["diam_le"],
+            strut["diam_te"],
+            strut["length"],
+        )
+
+    return float(le_volume), float(strut_volume)
+
+
 def find_mass_distributions(
     wing_sections,
     total_wing_mass: float,
@@ -836,6 +893,335 @@ def compute_structural_node_masses(
         node_masses[te_r] = avg_te
 
     return node_masses, used_le_to_strut_ratio
+
+
+def _rounded_yaml_value(value, digits=6):
+    if isinstance(value, float):
+        return round(value, digits)
+    if isinstance(value, dict):
+        return {
+            key: _rounded_yaml_value(nested_value, digits)
+            for key, nested_value in value.items()
+        }
+    if isinstance(value, list):
+        return [_rounded_yaml_value(item, digits) for item in value]
+    return value
+
+
+def _extract_structural_wing_element_mass(struc_geometry_yaml_path):
+    struc_path = Path(struc_geometry_yaml_path)
+    if not struc_path.exists():
+        return None
+
+    with open(struc_path, "r") as f:
+        struc_config = yaml.safe_load(f) or {}
+
+    if "wing_elements" not in struc_config:
+        return None
+
+    we_headers = _get_header_map(struc_config["wing_elements"])
+    mass_idx = we_headers.get("m", 4)
+    total_mass = 0.0
+    for row in struc_config["wing_elements"].get("data", []):
+        if len(row) > mass_idx:
+            total_mass += _safe_float(row[mass_idx], 0.0)
+    return float(total_mass)
+
+
+def _filter_structural_mass_sections(wing_sections_data, wing_airfoils_data):
+    """
+    Match the wing-section filtering used when struc_geometry.yaml is generated.
+    """
+    airfoil_id_to_spans = {}
+    for section in wing_sections_data:
+        airfoil_id = section[0]
+        span = section[2]
+        airfoil_id_to_spans.setdefault(airfoil_id, []).append(span)
+
+    wing_airfoils_filtered = []
+    rib_indices_with_laps = []
+    n_airfoils = len(wing_airfoils_data)
+    for i, entry in enumerate(wing_airfoils_data):
+        entry_dict = entry[2] if len(entry) > 2 and isinstance(entry[2], dict) else {}
+        if entry_dict.get("is_strut") is True:
+            wing_airfoils_filtered.append(entry)
+            rib_indices_with_laps.append(i + 1)
+
+    tip_airfoil_id = n_airfoils
+    if tip_airfoil_id and tip_airfoil_id not in rib_indices_with_laps:
+        wing_airfoils_filtered.append(wing_airfoils_data[tip_airfoil_id - 1])
+
+    wing_airfoils_filtered.sort(
+        key=lambda entry: (
+            min(airfoil_id_to_spans.get(entry[0], [0.0]))
+            if airfoil_id_to_spans.get(entry[0])
+            else 0.0
+        )
+    )
+
+    wing_sections_filtered = [
+        section
+        for section in wing_sections_data
+        if section[0] in rib_indices_with_laps
+    ]
+
+    if tip_airfoil_id and tip_airfoil_id not in rib_indices_with_laps:
+        tip_sections = [
+            section for section in wing_sections_data if section[0] == tip_airfoil_id
+        ]
+        if tip_sections:
+            wing_sections_filtered.append(min(tip_sections, key=lambda s: s[2]))
+            wing_sections_filtered.append(max(tip_sections, key=lambda s: s[2]))
+
+    wing_sections_filtered.sort(key=lambda section: section[2])
+    return wing_sections_filtered, wing_airfoils_filtered
+
+
+def build_wing_mass_distribution_report(
+    aero_geometry_yaml_path,
+    total_wing_mass=10.0,
+    canopy_kg_p_sqm=0.05,
+    le_to_strut_mass_ratio=None,
+    tube_kg_p_sqm=None,
+    sensor_mass=0.0,
+    mid_span_valve_weight=0.0,
+    strut_tube_weight=0.0,
+):
+    """
+    Build a serializable wing-only mass distribution report.
+
+    The mass model uses canopy and tube surface areas with areal densities
+    (kg/m^2). Geometric tube volumes are included as additional geometry, but
+    tube mass is not computed from volume density.
+    """
+    aero_geometry_yaml_path = Path(aero_geometry_yaml_path)
+    with open(aero_geometry_yaml_path, "r") as f:
+        config = yaml.safe_load(f) or {}
+
+    wing_sections_all = config["wing_sections"]["data"]
+    wing_airfoils_all = config.get("wing_airfoils", {}).get("data", [])
+    wing_sections, wing_airfoils = _filter_structural_mass_sections(
+        wing_sections_all,
+        wing_airfoils_all,
+    )
+    is_strut = _extract_is_strut_flags(wing_sections, wing_airfoils)
+
+    tube_data = None
+    tube_geometry_path = aero_geometry_yaml_path.with_name(
+        "struc_geometry_all_in_surfplan.yaml"
+    )
+    if tube_geometry_path.exists():
+        with open(tube_geometry_path, "r") as f:
+            struc_config = yaml.safe_load(f) or {}
+        tube_data = _extract_tube_data(struc_config)
+
+    (
+        total_canopy_mass,
+        panel_canopy_mass_list,
+        le_node_masses,
+        strut_node_masses,
+        le_tip_te_masses,
+        le_extra_node_masses,
+        sensor_points_indices,
+        LE_points,
+        TE_points,
+        is_strut,
+        total_canopy_area,
+        le_surface_area_used,
+        strut_surface_area_used,
+        used_le_to_strut_ratio,
+    ) = find_mass_distributions(
+        wing_sections,
+        total_wing_mass,
+        canopy_kg_p_sqm,
+        le_to_strut_mass_ratio,
+        tube_kg_p_sqm,
+        sensor_mass,
+        mid_span_valve_weight=mid_span_valve_weight,
+        strut_tube_weight=strut_tube_weight,
+        is_strut=is_strut,
+        tube_data=tube_data,
+    )
+
+    wing_nodes, mass_audit = distribute_mass_over_nodes(
+        le_node_masses,
+        strut_node_masses,
+        le_tip_te_masses,
+        le_extra_node_masses,
+        sensor_mass,
+        panel_canopy_mass_list,
+        sensor_points_indices,
+        LE_points,
+        TE_points,
+        return_mass_audit=True,
+    )
+
+    strut_rib_indices = _get_tube_strut_rib_indices(tube_data, LE_points)
+    strut_attachment_indices = _get_non_tip_strut_attachment_indices(
+        is_strut,
+        len(LE_points),
+        strut_rib_indices,
+    )
+    valve_node_indices = _get_mid_span_le_indices(len(LE_points))
+
+    le_component_mass = float(np.sum(le_node_masses) + np.sum(le_tip_te_masses))
+    strut_component_mass = float(2.0 * np.sum(strut_node_masses))
+    canopy_component_mass = float(total_canopy_mass)
+    sensor_component_mass = float(sensor_mass)
+    extra_component_mass = float(np.sum(le_extra_node_masses))
+    valve_component_mass = (
+        float(mid_span_valve_weight) if len(valve_node_indices) > 0 else 0.0
+    )
+    strut_tube_component_mass = max(0.0, extra_component_mass - valve_component_mass)
+    inflatable_tube_mass = le_component_mass + strut_component_mass
+
+    component_sum = (
+        canopy_component_mass
+        + inflatable_tube_mass
+        + sensor_component_mass
+        + valve_component_mass
+        + strut_tube_component_mass
+    )
+    corrected_node_mass = float(mass_audit["corrected_mass"])
+    wing_node_mass = float(sum(node[1] for node in wing_nodes))
+    if abs(component_sum - total_wing_mass) <= 1e-9:
+        component_delta = 0.0
+    else:
+        component_delta = component_sum - total_wing_mass
+
+    le_volume, strut_volume = _calculate_tube_volumes(tube_data, LE_points, TE_points)
+    if le_surface_area_used is None or strut_surface_area_used is None:
+        total_tube_area = None
+    else:
+        total_tube_area = float(le_surface_area_used + strut_surface_area_used)
+
+    if le_volume is None or strut_volume is None:
+        total_tube_volume = None
+    else:
+        total_tube_volume = float(le_volume + strut_volume)
+
+    if tube_kg_p_sqm is not None:
+        ratio_source = "tube_kg_p_sqm area-based mass"
+    else:
+        ratio_source = (
+            "auto from tube surface areas"
+            if le_to_strut_mass_ratio is None and tube_data is not None
+            else "user-specified or fallback budget split"
+        )
+
+    struc_geometry_path = aero_geometry_yaml_path.with_name("struc_geometry.yaml")
+    structural_element_mass = _extract_structural_wing_element_mass(struc_geometry_path)
+    actual_generated_wing_mass = (
+        structural_element_mass
+        if structural_element_mass is not None
+        else corrected_node_mass
+    )
+    structural_delta = (
+        None
+        if structural_element_mass is None
+        else structural_element_mass - component_sum
+    )
+
+    report = {
+        "kite_name": aero_geometry_yaml_path.parent.name,
+        "source_files": {
+            "aero_geometry": str(aero_geometry_yaml_path),
+            "tube_geometry": (
+                str(tube_geometry_path) if tube_geometry_path.exists() else None
+            ),
+            "structural_geometry": (
+                str(struc_geometry_path) if struc_geometry_path.exists() else None
+            ),
+        },
+        "units": {
+            "mass": "kg",
+            "area": "m^2",
+            "volume": "m^3",
+            "areal_density": "kg/m^2",
+        },
+        "mass_model": {
+            "geometry_scope": "structural wing sections used for struc_geometry.yaml",
+            "source_section_count": len(wing_sections_all),
+            "mass_section_count": len(wing_sections),
+            "target_total_wing_mass_kg": float(total_wing_mass),
+            "canopy_density_kg_per_m2": float(canopy_kg_p_sqm),
+            "inflatable_tube_density_kg_per_m2": (
+                None if tube_kg_p_sqm is None else float(tube_kg_p_sqm)
+            ),
+            "le_to_strut_mass_ratio": float(used_le_to_strut_ratio),
+            "le_to_strut_mass_ratio_source": ratio_source,
+            "tube_data": "loaded" if tube_data is not None else "not available",
+        },
+        "canopy": {
+            "total_canopy_surface_area_m2": float(total_canopy_area),
+            "total_canopy_volume_m3": None,
+            "canopy_density_kg_per_m2": float(canopy_kg_p_sqm),
+            "total_canopy_mass_kg": canopy_component_mass,
+        },
+        "inflatable_tubes": {
+            "leading_edge_surface_area_m2": le_surface_area_used,
+            "strut_surface_area_m2": strut_surface_area_used,
+            "total_inflatable_tube_surface_area_m2": total_tube_area,
+            "leading_edge_volume_m3": le_volume,
+            "strut_volume_m3": strut_volume,
+            "total_inflatable_tube_volume_m3": total_tube_volume,
+            "inflatable_tube_density_kg_per_m2": (
+                None if tube_kg_p_sqm is None else float(tube_kg_p_sqm)
+            ),
+            "leading_edge_mass_kg": le_component_mass,
+            "strut_mass_kg": strut_component_mass,
+            "total_inflatable_tube_mass_kg": inflatable_tube_mass,
+        },
+        "strut_to_leading_edge_connector_tubes": {
+            "count": len(strut_attachment_indices),
+            "weight_each_kg": float(strut_tube_weight),
+            "total_mass_kg": strut_tube_component_mass,
+        },
+        "mid_span_valve": {
+            "node_count": len(valve_node_indices),
+            "weight_kg": float(mid_span_valve_weight),
+            "total_mass_kg": valve_component_mass,
+        },
+        "sensor": {
+            "node_count": len(sensor_points_indices),
+            "total_mass_kg": sensor_component_mass,
+        },
+        "total_wing_mass": {
+            "actual_generated_wing_mass_kg": actual_generated_wing_mass,
+            "component_sum_kg": component_sum,
+            "corrected_node_mass_sum_kg": corrected_node_mass,
+            "wing_node_mass_sum_kg": wing_node_mass,
+            "structural_element_mass_sum_kg": structural_element_mass,
+            "target_total_wing_mass_kg": float(total_wing_mass),
+            "delta_components_minus_target_kg": component_delta,
+            "delta_structural_elements_minus_components_kg": structural_delta,
+        },
+        "notes": [
+            "Canopy mass is surface-area based; canopy volume is null "
+            "because no cloth thickness is provided.",
+            "Inflatable tube mass is surface-area based when tube_kg_p_sqm "
+            "is set; tube volumes are geometric only.",
+        ],
+    }
+
+    return _rounded_yaml_value(report)
+
+
+def save_wing_mass_distribution_yaml(
+    aero_geometry_yaml_path,
+    output_yaml_path,
+    **mass_model_kwargs,
+):
+    report = build_wing_mass_distribution_report(
+        aero_geometry_yaml_path,
+        **mass_model_kwargs,
+    )
+    output_yaml_path = Path(output_yaml_path)
+    output_yaml_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_yaml_path, "w") as f:
+        yaml.safe_dump(report, f, sort_keys=False)
+    print(f'Generated wing mass distribution YAML at "{output_yaml_path}"')
+    return report
 
 
 def calculate_cg(nodes):

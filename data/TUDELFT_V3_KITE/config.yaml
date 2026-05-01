@@ -14,11 +14,11 @@ kite_name: TUDELFT_V3_KITE
 # ---------------------------------------------------------------
 # Plot switches
 # ---------------------------------------------------------------
-is_with_struc_geometry_plot: false
-is_with_struc_geometry_all_in_surfplan_yaml: false
-is_with_airfoil_3d_plot: True
-is_with_cg_and_inertia_plot: True
-is_with_spanwise_chamber_plot: false
+is_with_struc_geometry_plot: False
+is_with_struc_geometry_all_in_surfplan_yaml: False
+is_with_airfoil_3d_plot: False
+is_with_cg_and_inertia_plot: False
+is_with_spanwise_chamber_plot: False
 
 # ---------------------------------------------------------------
 # Aerodynamic model input
@@ -34,11 +34,11 @@ total_wing_mass: 11.0
 
 # Canopy areal density [kg/m^2].
 # 0.1 kg/m^2 = 100 g/m^2.
-canopy_kg_p_sqm: 0.1
+canopy_kg_p_sqm: 0.17 #0.16
 
 # Tube areal density [kg/m^2] for LE + strut cylindrical surfaces.
 # Set null to use budget-forced tube mass instead.
-tube_kg_p_sqm: 0.7
+tube_kg_p_sqm: 0.53 #0.48
 
 # Tube mass split ratio used only when tube_kg_p_sqm is null.
 le_to_strut_mass_ratio: null
@@ -47,10 +47,10 @@ le_to_strut_mass_ratio: null
 sensor_mass: 0.0
 
 # Lumped valve mass [kg], at LE mid-span.
-mid_span_valve_weight: 0.1
+mid_span_valve_weight: 0.0
 
 # Extra lumped mass [kg] per non-tip LE strut node.
-strut_tube_weight: 0.1
+strut_tube_weight: 0.0
 
 # Add bridle masses to final CG/inertia node list.
 include_bridle_mass: false
@@ -58,3 +58,9 @@ include_bridle_mass: false
 # Inertia reference point [x, y, z] [m]
 # One can provided either a generic point: [0,0,0] or 'CG'
 desired_point: 'CG'
+
+### Reference intertia (internal documentation)
+# ixx_wing_kgm2: 84.79
+# iyy_wing_kgm2: 13.23
+# izz_wing_kgm2: 83.01
+# ixz_wing_kgm2: -0.66

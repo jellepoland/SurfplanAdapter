@@ -14,7 +14,7 @@ def main(
     strut_tube_weight=0.0,
     include_bridle_mass=True,
     is_show_plot=True,
-    desired_point=[0, 0, 0],
+    desired_point='CG',
 ):
     """Calculate CG and inertia for aero_geometry.yaml or struc_geometry.yaml."""
     PROJECT_DIR = Path(__file__).resolve().parents[2]
