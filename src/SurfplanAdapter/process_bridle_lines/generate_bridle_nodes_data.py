@@ -23,8 +23,12 @@ def main(bridle_lines):
     # Convert to sorted list for consistent ordering
     unique_points = sorted(list(unique_points))
 
-    # Check if all y-coordinates are negative
-    all_y_negative = all(point[1] < 0 for point in unique_points)
+    # Surfplan exports one half of the bridle (y < 0). Nodes on the symmetry plane
+    # (y = 0, e.g. a single-line kite's bridle apex) belong to both halves: the half
+    # is mirrored as long as no node lies on the other side, and those nodes are
+    # not duplicated.
+    one_sided = all(point[1] <= 0 for point in unique_points)
+    off_plane = [point for point in unique_points if point[1] != 0.0]
 
     # Add original nodes
     for point in unique_points:
@@ -39,12 +43,12 @@ def main(bridle_lines):
         )
         node_id += 1
 
-    # If all y-coordinates are negative, add symmetrical nodes with positive y
-    if all_y_negative:
+    # Add the symmetrical half, with positive y
+    if one_sided and off_plane:
         print(
-            f"All bridle nodes have negative y-coordinates. Adding {len(unique_points)} symmetrical nodes with positive y."
+            f"Bridle exported as one half. Adding {len(off_plane)} symmetrical nodes with positive y."
         )
-        for point in unique_points:
+        for point in off_plane:
             bridle_nodes_data.append(
                 [
                     node_id,

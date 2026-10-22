@@ -62,7 +62,9 @@ def main(bridle_lines, bridle_nodes_data, len_wing_sections):
                     ci_mirrored = point_to_node_id.get(p1_mirrored, 0)
                     cj_mirrored = point_to_node_id.get(p2_mirrored, 0)
 
-                    if ci_mirrored > 0 and cj_mirrored > 0:
+                    # A line on the symmetry plane is its own mirror image
+                    on_plane = {ci_mirrored, cj_mirrored} == {ci, cj}
+                    if ci_mirrored > 0 and cj_mirrored > 0 and not on_plane:
                         bridle_connections_data.append(
                             [
                                 name,  # Same line name for symmetrical connection
