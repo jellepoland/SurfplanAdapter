@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Structural geometry (`struc_geometry_all_in_surfplan.yaml`, and the tube masses of
+  `struc_geometry.yaml`): struts and LE/TE tube diameters landed one rib off whenever an
+  outer section was removed, inboard on +y and outboard on -y (asymmetric, also on the
+  TUDELFT_V3_KITE example). The rib indices are now kept through the outer-section
+  filter (`_remove_outer_sections`) and `node_map` is keyed by rib index.
+- `strut_diam_le` was 0 on kites whose SurfPlan export gives the strut's first sample
+  (its root inside the LE tube) a zero diameter; the nearest sample with a diameter
+  is used.
+
 ### Added
 - Script `merge_bridle_nodes_to_wing_nodes.py` to merge nearby bridle nodes into wing strut/tip nodes, regenerate the Surfplan structural YAML, and plot the result.
 

@@ -138,26 +138,44 @@ def transform_struc_geometry_all_in_yaml_format(struc_geometry_dict):
     return yaml_data
 
 
-def _build_tube_config_from_ribs(ribs_data):
-    """Build tube data config dict from ribs_data for mass computation."""
-    wing_sections_all = generate_wing_sections_data.main(ribs_data)
-    sections_all = wing_sections_all["data"]
+def _remove_outer_sections(wing_sections):
+    """Drop the sections at the extreme span (the outer ribs) and return the
+    indices, in ``ribs_data``, of the ribs that are kept.
+
+    ``generate_wing_sections_data.main`` writes one section per rib, in rib
+    order, so section ``i`` is rib ``i``. The kept indices let every later
+    lookup by rib index (struts, tube diameters) find the right nodes even
+    when a rib has been removed. The outermost rib is not always the first or
+    the last one: on a tip that folds back it is the second rib, which lies
+    spanwise outboard of the tip rib itself.
+    """
+    sections_all = wing_sections["data"]
+    kept = list(range(len(sections_all)))
     if sections_all:
         spans = [section[2] for section in sections_all]
         min_span = min(spans)
         max_span = max(spans)
         tol = 1e-6
-        sections_deduped = [
-            section
-            for section in sections_all
+        filtered = [
+            i
+            for i, section in enumerate(sections_all)
             if not (
                 abs(section[2] - min_span) < tol or abs(section[2] - max_span) < tol
             )
         ]
-        if 0 < len(sections_deduped) < len(sections_all):
-            wing_sections_all["data"] = sections_deduped
+        if 0 < len(filtered) < len(sections_all):
+            kept = filtered
+            wing_sections["data"] = [sections_all[i] for i in kept]
+    return wing_sections, kept
 
-    wp_all, node_map = _build_wing_particles_and_mapping(wing_sections_all)
+
+def _build_tube_config_from_ribs(ribs_data):
+    """Build tube data config dict from ribs_data for mass computation."""
+    wing_sections_all, rib_indices = _remove_outer_sections(
+        generate_wing_sections_data.main(ribs_data)
+    )
+
+    wp_all, node_map = _build_wing_particles_and_mapping(wing_sections_all, rib_indices)
     strut_tubes = _build_strut_tubes(ribs_data, node_map)
     leading_edge_tubes = _build_leading_edge_tubes(ribs_data, node_map)
 
@@ -525,11 +543,17 @@ def _calculate_le_diameter(rib):
     return float(diameter) * float(chord)
 
 
-def _build_wing_particles_and_mapping(wing_sections):
+def _build_wing_particles_and_mapping(wing_sections, rib_indices=None):
+    """Wing particles (LE, TE per section) and ``node_map``: a dict from the
+    section's rib index in ``ribs_data`` to its ``{"LE": id, "TE": id}``, in
+    section order. ``rib_indices`` are those rib indices (default: section i is
+    rib i)."""
     wing_particles = {"headers": ["id", "x", "y", "z"], "data": []}
-    node_map = []
+    node_map = {}
+    if rib_indices is None:
+        rib_indices = range(len(wing_sections["data"]))
     idx = 1
-    for section in wing_sections["data"]:
+    for rib_idx, section in zip(rib_indices, wing_sections["data"]):
         le_idx = idx
         wing_particles["data"].append(
             [le_idx, float(section[1]), float(section[2]), float(section[3])]
@@ -540,7 +564,7 @@ def _build_wing_particles_and_mapping(wing_sections):
             [te_idx, float(section[4]), float(section[5]), float(section[6])]
         )
         idx += 1
-        node_map.append({"LE": le_idx, "TE": te_idx})
+        node_map[rib_idx] = {"LE": le_idx, "TE": te_idx}
     return wing_particles, node_map
 
 
@@ -561,7 +585,8 @@ def _build_strut_tubes(ribs_data, node_map):
     for idx, rib in enumerate(ribs_data):
         if not rib.get("is_strut"):
             continue
-        if idx >= len(node_map):
+        if idx not in node_map:
+            # the strut's rib was removed as an outer rib
             continue
 
         le_node = node_map[idx]["LE"]
@@ -582,12 +607,16 @@ def _build_strut_tubes(ribs_data, node_map):
                 center_vsm = rotate_coordinate_around_y_vsm(center_vsm, y_rotation_rad)
                 transformed_samples.append((center_vsm, float(sample["diameter"])))
 
+            # SurfPlan writes the strut's first sample, at its root inside the LE
+            # tube, with a zero diameter: take the nearest sample with a diameter.
+            sized_samples = [s for s in transformed_samples if s[1] > 0.0]
+            candidates = sized_samples or transformed_samples
             strut_diam_te = min(
-                transformed_samples,
+                candidates,
                 key=lambda s: np.linalg.norm(s[0] - te_point),
             )[1]
             strut_diam_le = min(
-                transformed_samples,
+                candidates,
                 key=lambda s: np.linalg.norm(s[0] - le_point),
             )[1]
 
@@ -612,7 +641,9 @@ def _build_leading_edge_tubes(ribs_data, node_map):
         "data": [],
     }
 
-    n_nodes = len(node_map)
+    # rib indices of the wing nodes, in section order (node_map keeps it)
+    ribs = list(node_map)
+    n_nodes = len(ribs)
     if n_nodes == 0:
         return leading_edge_tubes
 
@@ -631,9 +662,9 @@ def _build_leading_edge_tubes(ribs_data, node_map):
     leading_edge_tubes["data"].append(
         [
             "le_tip_start",
-            node_map[0]["TE"],
-            node_map[0]["LE"],
-            _segment_diameter(0),
+            node_map[ribs[0]]["TE"],
+            node_map[ribs[0]]["LE"],
+            _segment_diameter(ribs[0]),
         ]
     )
 
@@ -642,9 +673,9 @@ def _build_leading_edge_tubes(ribs_data, node_map):
         leading_edge_tubes["data"].append(
             [
                 f"le_run_{i+1}",
-                node_map[i]["LE"],
-                node_map[i + 1]["LE"],
-                _segment_diameter(i, i + 1),
+                node_map[ribs[i]]["LE"],
+                node_map[ribs[i + 1]]["LE"],
+                _segment_diameter(ribs[i], ribs[i + 1]),
             ]
         )
 
@@ -653,9 +684,9 @@ def _build_leading_edge_tubes(ribs_data, node_map):
     leading_edge_tubes["data"].append(
         [
             "le_tip_end",
-            node_map[last_idx]["LE"],
-            node_map[last_idx]["TE"],
-            _segment_diameter(last_idx),
+            node_map[ribs[last_idx]]["LE"],
+            node_map[ribs[last_idx]]["TE"],
+            _segment_diameter(ribs[last_idx]),
         ]
     )
 
@@ -665,9 +696,9 @@ def _build_leading_edge_tubes(ribs_data, node_map):
         leading_edge_tubes["data"].append(
             [
                 f"te_run_{segment}",
-                node_map[i]["TE"],
-                node_map[i - 1]["TE"],
-                _segment_diameter(i, i - 1),
+                node_map[ribs[i]]["TE"],
+                node_map[ribs[i - 1]]["TE"],
+                _segment_diameter(ribs[i], ribs[i - 1]),
             ]
         )
         segment += 1
@@ -682,27 +713,14 @@ def create_struc_geometry_all_in_surfplan_yaml(
 ):
     yaml_file_path = Path(yaml_file_path.parent / "struc_geometry_all_in_surfplan.yaml")
 
-    # Build full wing particles and mapping (no filtering)
-    wing_sections_all = generate_wing_sections_data.main(ribs_data)
+    # Wing sections without the outer ribs, and the rib index of each kept one
+    wing_sections_all, rib_indices = _remove_outer_sections(
+        generate_wing_sections_data.main(ribs_data)
+    )
 
-    # Remove duplicated outer ribs (keep the smallest-chord tip on each side)
-    sections_all = wing_sections_all["data"]
-    if sections_all:
-        spans = [section[2] for section in sections_all]
-        min_span = min(spans)
-        max_span = max(spans)
-        tol = 1e-6
-        sections_filtered = [
-            section
-            for section in sections_all
-            if not (
-                abs(section[2] - min_span) < tol or abs(section[2] - max_span) < tol
-            )
-        ]
-        if 0 < len(sections_filtered) < len(sections_all):
-            wing_sections_all["data"] = sections_filtered
-
-    wing_particles_all, node_map = _build_wing_particles_and_mapping(wing_sections_all)
+    wing_particles_all, node_map = _build_wing_particles_and_mapping(
+        wing_sections_all, rib_indices
+    )
 
     strut_tubes = _build_strut_tubes(ribs_data, node_map)
     leading_edge_tubes = _build_leading_edge_tubes(ribs_data, node_map)
