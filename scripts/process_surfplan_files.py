@@ -98,6 +98,8 @@ def main(
     sensor_mass=0.0,
     mid_span_valve_weight=0.1,  # kg, added at mid-span LE node(s)
     strut_tube_weight=0.1,  # kg per non-tip LE strut-attachment node
+    pulley_mass=0.1,  # kg, written to struc_geometry*.yaml
+    kcu_mass=8.4,  # kg, written to struc_geometry*.yaml
     include_bridle_mass=False,
     desired_point=[0, 0, 0],
 ):
@@ -144,6 +146,8 @@ def main(
         sensor_mass=sensor_mass,
         mid_span_valve_weight=mid_span_valve_weight,
         strut_tube_weight=strut_tube_weight,
+        pulley_mass=pulley_mass,
+        kcu_mass=kcu_mass,
     )
 
     calculate_cg_and_inertia.save_wing_mass_distribution_yaml(

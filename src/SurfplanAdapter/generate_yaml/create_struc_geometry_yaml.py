@@ -18,7 +18,9 @@ from SurfplanAdapter.utils import (
 from SurfplanAdapter.calculate_cg_and_inertia import compute_structural_node_masses
 
 
-def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
+def transform_struc_geometry_dict_to_yaml_format(
+    struc_geometry_dict, pulley_mass=0.1, kcu_mass=8.4
+):
     """
     Transform the structural geometry dict to the desired YAML format.
     Adds general, mass, and material properties sections, then appends all geometry data.
@@ -35,8 +37,8 @@ def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
     # Mass section
     yaml_data["   "] = None
     yaml_data["## Mass"] = None
-    yaml_data["pulley_mass"] = float(0.1)  # [kg]
-    yaml_data["kcu_mass"] = float(8.4)  # [kg]
+    yaml_data["pulley_mass"] = float(pulley_mass)  # [kg]
+    yaml_data["kcu_mass"] = float(kcu_mass)  # [kg]
 
     # Material properties section
     yaml_data["   "] = None
@@ -81,7 +83,9 @@ def transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict):
     return yaml_data
 
 
-def transform_struc_geometry_all_in_yaml_format(struc_geometry_dict):
+def transform_struc_geometry_all_in_yaml_format(
+    struc_geometry_dict, pulley_mass=0.1, kcu_mass=8.4
+):
     """
     Transform the structural geometry dict for the Surfplan all-in export format.
     """
@@ -97,8 +101,8 @@ def transform_struc_geometry_all_in_yaml_format(struc_geometry_dict):
     # Mass section
     yaml_data["   "] = None
     yaml_data["## Mass"] = None
-    yaml_data["pulley_mass"] = float(0.1)
-    yaml_data["kcu_mass"] = float(8.4)
+    yaml_data["pulley_mass"] = float(pulley_mass)
+    yaml_data["kcu_mass"] = float(kcu_mass)
 
     # Material properties section
     yaml_data["   "] = None
@@ -180,6 +184,8 @@ def main(
     sensor_mass=0.0,
     mid_span_valve_weight=0.0,
     strut_tube_weight=0.0,
+    pulley_mass=0.1,
+    kcu_mass=8.4,
 ):
     yaml_file_path = Path(yaml_file_path.parent / "struc_geometry.yaml")
 
@@ -495,7 +501,9 @@ def main(
     }
 
     ### now we need to transform all this to the correct yaml format
-    yaml_data = transform_struc_geometry_dict_to_yaml_format(struc_geometry_dict)
+    yaml_data = transform_struc_geometry_dict_to_yaml_format(
+        struc_geometry_dict, pulley_mass=pulley_mass, kcu_mass=kcu_mass
+    )
 
     # # Add bridle data if available
     # if len(bridle_lines) > 0:
@@ -514,7 +522,13 @@ def main(
     utils.save_to_yaml(yaml_data, yaml_file_path)
 
     # Create the extended Surfplan file with all sections
-    create_struc_geometry_all_in_surfplan_yaml(ribs_data, bridle_lines, yaml_file_path)
+    create_struc_geometry_all_in_surfplan_yaml(
+        ribs_data,
+        bridle_lines,
+        yaml_file_path,
+        pulley_mass=pulley_mass,
+        kcu_mass=kcu_mass,
+    )
 
 
 def _calculate_le_diameter(rib):
@@ -679,6 +693,8 @@ def create_struc_geometry_all_in_surfplan_yaml(
     ribs_data,
     bridle_lines,
     yaml_file_path,
+    pulley_mass=0.1,
+    kcu_mass=8.4,
 ):
     yaml_file_path = Path(yaml_file_path.parent / "struc_geometry_all_in_surfplan.yaml")
 
@@ -740,5 +756,7 @@ def create_struc_geometry_all_in_surfplan_yaml(
         "bridle_lines": bridle_lines_yaml,
     }
 
-    yaml_data = transform_struc_geometry_all_in_yaml_format(struc_geometry_dict)
+    yaml_data = transform_struc_geometry_all_in_yaml_format(
+        struc_geometry_dict, pulley_mass=pulley_mass, kcu_mass=kcu_mass
+    )
     utils.save_to_yaml(yaml_data, yaml_file_path)

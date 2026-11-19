@@ -122,6 +122,8 @@ def main(
     sensor_mass=0.0,
     mid_span_valve_weight=0.0,
     strut_tube_weight=0.0,
+    pulley_mass=0.1,
+    kcu_mass=8.4,
 ):
     """
     Generate a YAML file with wing geometry and airfoil data using SurfplanAdapter logic.
@@ -186,4 +188,6 @@ def main(
         sensor_mass=sensor_mass,
         mid_span_valve_weight=mid_span_valve_weight,
         strut_tube_weight=strut_tube_weight,
+        pulley_mass=pulley_mass,
+        kcu_mass=kcu_mass,
     )
