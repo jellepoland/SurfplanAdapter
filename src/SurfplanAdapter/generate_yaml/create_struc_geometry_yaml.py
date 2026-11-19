@@ -315,8 +315,8 @@ def main(
                 [f"strut_{mirror_panel}", le_i, te_i],
                 [f"le_{mirror_panel}", le_i, le_prev],
                 [f"te_{mirror_panel}", te_i, te_prev],
-                [f"dia_{mirror_panel}b", le_i, te_prev],
-                [f"dia_{mirror_panel}a", te_i, le_prev],
+                [f"dia_{mirror_panel}a", le_i, te_prev],
+                [f"dia_{mirror_panel}b", te_i, le_prev],
             ]
         )
 
