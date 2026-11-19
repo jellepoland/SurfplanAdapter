@@ -120,9 +120,10 @@ def extract_delta_from_points(x_points, y_points) -> float:
         if delta_x == 0:
             return 0.0
 
-        te_angle_rad = math.atan2(delta_y, delta_x)
-        te_angle_deg = 180 - math.degrees(te_angle_rad)
-        return te_angle_deg
+        # Slope of the canopy just ahead of the TE [deg], positive when the canopy
+        # descends towards the TE. This is NOT yet Masure's delta (reflex angle), which
+        # is measured from the no-reflex shape: see _delta_matching_te_slope.
+        return math.degrees(math.atan2(delta_y, -delta_x))
     else:
         return 0.0  # Not enough points to calculate the angle
 
@@ -227,6 +228,41 @@ def calculate_surface_error_for_input_points(
     }
 
 
+def _te_slope_of_generated(points, x_te, x_ref):
+    """Same TE slope measure as extract_delta_from_points (secant between the input
+    abscissae x_te and x_ref), taken on the upper surface of a generated profile."""
+    upper = points[: int(np.argmax(points[:, 0])) + 1]
+    order = np.argsort(upper[:, 0])
+    x_te = min(x_te, upper[order[-1], 0])
+    y_te, y_ref = np.interp([x_te, x_ref], upper[order, 0], upper[order, 1])
+    return math.degrees(math.atan2(y_ref - y_te, x_te - x_ref))
+
+
+def _delta_matching_te_slope(parameters, te_slope_deg, x_te, x_ref, bounds=(-20.0, 20.0)):
+    """Masure's reflex angle delta [deg] (negative = TE turned up) whose generated
+    profile has the measured TE slope, for the other parameters fixed (bisection)."""
+
+    def slope(delta):
+        p = dict(parameters, delta_val=delta)
+        return _te_slope_of_generated(utils_lei_parametric.generate_profile(**p)[0], x_te, x_ref)
+
+    lo, hi = bounds
+    s_lo, s_hi = slope(lo), slope(hi)
+    if abs(s_hi - s_lo) < 1e-6:  # TE angle has no effect (flat profile)
+        return 0.0
+    if te_slope_deg <= s_lo:
+        return lo
+    if te_slope_deg >= s_hi:
+        return hi
+    for _ in range(14):  # 40° / 2**14 ≈ 0.002° resolution
+        mid = 0.5 * (lo + hi)
+        if slope(mid) < te_slope_deg:
+            lo = mid
+        else:
+            hi = mid
+    return round(0.5 * (lo + hi), 3)
+
+
 def find_optimal_lambda_from_profile_points(
     input_profile_points, base_parameters, lambda_values=None
 ):
@@ -264,10 +300,21 @@ def find_optimal_lambda_from_profile_points(
 
     results = []
 
+    # Measured TE slope of the input profile and the abscissa it is taken at
+    input_xy = np.asarray(input_profile_points, dtype=float)
+    if abs(input_xy[0, 0] - 1.0) >= 0.01:  # starts near the LE: walk from the TE
+        input_xy = input_xy[::-1]
+    te_slope_deg = extract_delta_from_points(list(input_xy[:, 0]), list(input_xy[:, 1]))
+    x_te, x_ref = input_xy[0, 0], input_xy[2, 0]
+
     for lambda_val in lambda_values:
         # Create parameters with current lambda value
         test_parameters = base_parameters.copy()
         test_parameters["lambda_val"] = lambda_val
+        # delta consistent with this lambda: reproduces the measured TE slope
+        test_parameters["delta_val"] = _delta_matching_te_slope(
+            test_parameters, te_slope_deg, x_te, x_ref
+        )
 
         try:
             # Generate profile with current lambda
@@ -280,6 +327,7 @@ def find_optimal_lambda_from_profile_points(
                 input_profile_points, generated_points, lambda_val
             )
 
+            error_metrics["delta_value"] = test_parameters["delta_val"]
             results.append(error_metrics)
 
             # print(
@@ -302,6 +350,7 @@ def find_optimal_lambda_from_profile_points(
 
     return {
         "optimal_lambda": best_match["lambda_value"],
+        "optimal_delta": best_match["delta_value"],
         "best_match": best_match,
         "all_results": results,
         "total_tests": len(results),
@@ -336,6 +385,7 @@ def get_fitted_airfoil_parameters(
         optimal_lambda = optimization_result["optimal_lambda"]
         # print(f"🎯 Optimal lambda value = {optimal_lambda:.3f}")
         base_parameters["lambda_val"] = optimal_lambda
+        base_parameters["delta_val"] = optimization_result["optimal_delta"]
     else:
         print(f"Lambda optimization failed: {optimization_result['error']}")
         print(f"Using default lambda value, λ = {base_lambda:.3f}")
